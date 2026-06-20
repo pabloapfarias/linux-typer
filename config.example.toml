@@ -1,0 +1,32 @@
+hotkey = "Ctrl+Alt+Space"
+language = "pt"
+model_path = "/home/USER/.local/share/linux-voice-typer/whisper.cpp/models/ggml-small.bin"
+whisper_bin = "/home/USER/.local/share/linux-voice-typer/whisper.cpp/build/bin/whisper-cli"
+insert_mode = "clipboard"
+
+# paste_backend:
+# - "auto": tenta wtype, depois ydotool, depois uinput, depois mantem so no clipboard
+# - "wtype": usa wtype
+# - "ydotool": usa ydotool
+# - "uinput": usa /dev/uinput diretamente pelo app
+# - "none": copia para o clipboard e nao cola automaticamente
+#
+# Recomendacao: use "uinput" quando wtype falhar no Wayland e /dev/uinput estiver acessivel.
+# O mais importante e garantir que a transcricao fique no clipboard.
+paste_backend = "uinput"
+
+# paste_shortcut:
+# - "ctrl_v": recomendado para apps normais
+# - "ctrl_shift_v": recomendado para muitos terminais Linux
+paste_shortcut = "ctrl_v"
+
+# restore_clipboard:
+# - true: restaura o clipboard anterior DEPOIS que o auto-paste confirmar sucesso
+# - false: mantem a transcricao no clipboard (recomendado)
+#
+# Com restore_clipboard = true, se o auto-paste falhar, a transcricao
+# permanece no clipboard (nao e restaurada).
+restore_clipboard = false
+auto_paste = true
+trim_text = true
+temp_dir = "/home/USER/.local/share/linux-voice-typer/temp"

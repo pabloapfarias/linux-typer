@@ -1,0 +1,6 @@
+/target/
+/config.toml
+/config.toml.bak
+*.log
+*.tmp
+.DS_Store
