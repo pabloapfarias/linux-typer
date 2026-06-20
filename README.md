@@ -130,4 +130,4 @@ Este projeto ainda e um MVP, mas ja valida o fluxo principal:
 
 ## Licenca
 
-Defina a licenca antes de publicar o repositorio como projeto aberto.
+[MIT](LICENSE)
