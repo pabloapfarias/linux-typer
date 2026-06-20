@@ -116,6 +116,12 @@ app.innerHTML = `
 
 const $ = (id) => document.getElementById(id);
 
+function basename(path) {
+  if (!path) return '-';
+  const parts = path.replace(/\\/g, '/').split('/');
+  return parts[parts.length - 1] || path;
+}
+
 function setOutput(text) {
   lastCommandOutput = text || '';
   $('command-output').textContent = lastCommandOutput || 'Nenhum comando executado ainda.';
@@ -145,8 +151,8 @@ function renderStatus(status) {
   $('status-backend').textContent = status.paste_backend;
   $('status-language').textContent = status.language;
   $('status-mic').textContent = status.microphone;
-  $('status-model').textContent = status.model_path;
-  $('status-whisper').textContent = status.whisper_bin;
+  $('status-model').textContent = basename(status.model_path);
+  $('status-whisper').textContent = basename(status.whisper_bin);
   $('last-transcript').textContent = status.last_transcript || 'Nada transcrito ainda.';
   renderEvents(status.recent_events || []);
   updateModeButtons(status.paste_mode);
@@ -226,8 +232,12 @@ $('refresh-logs').addEventListener('click', async () => renderEvents(await call(
 $('start-service').addEventListener('click', async (event) => {
   setBusy(event.currentTarget, true);
   try {
-    renderStatus(await call('start_service'));
-    setOutput('Serviço iniciado.');
+    const status = await call('start_service');
+    renderStatus(status);
+    if (status.running) {
+      const alreadyRunning = (status.recent_events || []).some(e => e.includes('já estava rodando'));
+      setOutput(alreadyRunning ? 'Serviço já está rodando.' : 'Serviço iniciado.');
+    }
   } finally {
     setBusy(event.currentTarget, false);
   }
@@ -282,9 +292,16 @@ $('mode-terminal').addEventListener('click', async () => {
 
 $('save-config').addEventListener('click', async () => {
   const config = collectConfig();
-  renderStatus(await call('save_config', { config }));
+  const status = await call('save_config', { config });
+  renderStatus(status);
   await refreshConfig();
-  setOutput('Configurações salvas. Reinicie o serviço se ele já estava rodando.');
+  const events = status.recent_events || [];
+  const lastEvent = events[events.length - 1] || '';
+  if (lastEvent.includes('Reinicie')) {
+    setOutput('Configuração salva. Reinicie o serviço para aplicar as alterações.');
+  } else {
+    setOutput('Configuração salva.');
+  }
 });
 
 boot().catch((error) => setOutput(String(error)));

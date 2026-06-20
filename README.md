@@ -74,6 +74,9 @@ npm install
 npm run tauri dev
 ```
 
+No GNOME, o tray icon pode depender de suporte AppIndicator/KStatusNotifier.
+Veja detalhes em [TECHNICAL.md](TECHNICAL.md).
+
 Para detalhes técnicos, veja [TECHNICAL.md](TECHNICAL.md).
 
 ## Como funciona

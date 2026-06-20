@@ -477,6 +477,96 @@ linux-voice-typer/
 
 O crate principal ainda preserva `cargo run -- ...` para a CLI.
 
+### Depuracao da interface
+
+Para ver logs do frontend no console do navegador:
+
+1. Abra a interface com `npm run tauri dev`
+2. Clique com botao direito na janela -> Inspect (ou pressione F12)
+3. Abra a aba Console
+
+Para ver logs do backend Rust no terminal:
+
+```bash
+cd apps/desktop
+npm run tauri dev 2>&1 | tee /tmp/tauri-debug.log
+```
+
+Logs uteis aparecem com `INFO`, `WARN` e `ERROR` do `env_logger`.
+
+Para depurar erros de compilacao do backend:
+
+```bash
+cd apps/desktop
+cargo check --manifest-path src-tauri/Cargo.toml
+```
+
+### Validacao da interface
+
+Apos `npm run tauri dev`, a janela deve mostrar:
+
+- Status do servico (Rodando/Parado)
+- Hotkey atual
+- Modo (Editor/Terminal)
+- Backend (uinput, etc)
+- Idioma
+- Modelo Whisper (nome do arquivo, nao path completo)
+- Whisper CLI (nome do arquivo)
+- Microfone detectado
+- Ultima transcricao
+
+Botaoes obrigatorios e seus efeitos:
+
+- **Iniciar**: inicia o servico, exibe "Servico iniciado" ou "Servico ja esta rodando"
+- **Parar**: para o servico, exibe "Servico parado"
+- **Modo Editor**: aplica `ctrl_v`, salva no config.toml
+- **Modo Terminal**: aplica `ctrl_shift_v`, salva no config.toml
+- **Testar paste**: executa `paste_test_report()` e mostra resultado
+- **Rodar doctor**: executa `doctor_report_text()` e mostra resultado
+- **Salvar configuracoes**: grava config.toml e recarrega servico
+- **Abrir config**: abre config.toml no editor do sistema
+
+### Tray icon no GNOME
+
+O tray icon usa `TrayIconBuilder` do Tauri v2 com o recurso `tray-icon`.
+
+No GNOME, o tray icon pode nao aparecer por padrao. O GNOME nao fornece
+suporte nativo a AppIndicator/KStatusNotifier. Para usar o tray icon:
+
+1. Instale a extensao `AppIndicator and KStatusNotifierItem Support`:
+
+```bash
+# Ubuntu/Debian
+sudo apt install gnome-shell-extension-appindicator
+
+# Ou via Extensions GNOME (https://extensions.gnome.org)
+```
+
+2. Reinicie a sessao GNOME apos instalar a extensao.
+
+3. Se o tray icon ainda nao aparecer, verifique se a extensao esta ativa:
+
+```bash
+gnome-extensions list | grep appindicator
+gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com
+```
+
+Sem a extensao, o app funciona normalmente pela janela, mas sem tray icon.
+O fechar janela pode encerrar o app ao inves de esconder para o tray.
+
+### Erros amigaveis na interface
+
+A interface traduz erros tecnicos do core para mensagens compreensiveis:
+
+| Erro tecnico | Mensagem na interface |
+|---|---|
+| model_path does not exist | Modelo Whisper nao encontrado. Rode `cargo run -- setup` ou verifique o caminho em Configuracoes. |
+| whisper_bin does not exist | Whisper CLI nao encontrado. Rode `cargo run -- setup` para instalar. |
+| hotkey cannot be empty | Hotkey invalida. Verifique o campo Hotkey em Configuracoes. |
+| audio error | Erro ao acessar o microfone. Verifique se ha um microfone disponivel. |
+| hotkey error | Erro ao registrar hotkey global. Verifique se ha outro programa usando a mesma combinacao. |
+| transcriber returned empty text | Whisper retornou texto vazio. Verifique o modelo e o audio gravado. |
+
 ## Troubleshooting
 
 ### Compositor does not support the virtual keyboard protocol

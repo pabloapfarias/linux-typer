@@ -53,6 +53,9 @@ fn get_status(state: State<'_, DesktopState>) -> VoiceTyperStatus {
 
 #[tauri::command]
 fn start_service(state: State<'_, DesktopState>) -> Result<VoiceTyperStatus, String> {
+    if state.service.is_running() {
+        return Ok(state.service.status());
+    }
     let config = load_validated_config(&state.paths).map_err(to_message)?;
     state.service.reload_config(config).map_err(to_message)?;
     state.service.start().map_err(to_message)?;
@@ -87,7 +90,17 @@ fn save_config(
     let config = desktop_to_config(config);
     config.save(state.paths.config_path()).map_err(to_message)?;
     state.service.reload_config(config).map_err(to_message)?;
-    Ok(state.service.status())
+    let mut status = state.service.status();
+    if status.running {
+        status.recent_events.push(
+            "Configuração salva. Reinicie o serviço para aplicar as alterações.".into(),
+        );
+    } else {
+        status
+            .recent_events
+            .push("Configuração salva.".into());
+    }
+    Ok(status)
 }
 
 #[tauri::command]
@@ -335,5 +348,37 @@ fn desktop_to_config(config: DesktopConfig) -> Config {
 }
 
 fn to_message(error: AppError) -> String {
-    error.to_string()
+    match &error {
+        AppError::InvalidConfig(msg) => {
+            if msg.contains("model_path") {
+                "Modelo Whisper não encontrado. Rode `cargo run -- setup` ou verifique o caminho em Configurações.".into()
+            } else if msg.contains("whisper_bin") {
+                "Whisper CLI não encontrado. Rode `cargo run -- setup` para instalar.".into()
+            } else if msg.contains("hotkey") {
+                "Hotkey inválida. Verifique o campo Hotkey em Configurações.".into()
+            } else {
+                format!("Configuração inválida: {msg}")
+            }
+        }
+        AppError::MissingDependency(name) => {
+            format!("Dependência ausente: {name}. Rode `cargo run -- doctor` para diagnóstico.")
+        }
+        AppError::CommandFailed(msg) => {
+            if msg.contains("transcriber returned empty text") {
+                "Whisper retornou texto vazio. Verifique o modelo e o áudio gravado.".into()
+            } else {
+                format!("Comando falhou: {msg}")
+            }
+        }
+        AppError::Audio(_) => {
+            "Erro ao acessar o microfone. Verifique se há um microfone disponível.".into()
+        }
+        AppError::Hotkey(_) => {
+            "Erro ao registrar hotkey global. Verifique se há outro programa usando a mesma combinação.".into()
+        }
+        AppError::Unsupported(msg) => {
+            format!("Recurso não disponível: {msg}")
+        }
+        _ => error.to_string(),
+    }
 }
