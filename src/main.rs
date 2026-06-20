@@ -1,18 +1,3 @@
-mod audio;
-mod cli;
-mod clipboard;
-mod config;
-mod doctor;
-mod downloader;
-mod error;
-mod fs_paths;
-mod hotkey;
-mod injector;
-mod platform;
-mod setup;
-mod transcriber;
-mod uinput;
-
 use std::io::IsTerminal;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -22,13 +7,14 @@ use clap::Parser;
 use dialoguer::Confirm;
 use log::{error, info, warn};
 
-use crate::audio::Recorder;
-use crate::cli::{Cli, Commands};
-use crate::config::{Config, PasteShortcut};
-use crate::doctor::RuntimeStatus;
-use crate::error::{AppError, AppResult};
-use crate::fs_paths::AppPaths;
-use crate::hotkey::{HotkeyListener, TriggerEvent};
+use linux_voice_typer::audio::Recorder;
+use linux_voice_typer::cli::{self, Cli, Commands};
+use linux_voice_typer::config::{Config, PasteShortcut};
+use linux_voice_typer::doctor::{self, RuntimeStatus};
+use linux_voice_typer::error::{AppError, AppResult};
+use linux_voice_typer::fs_paths::AppPaths;
+use linux_voice_typer::hotkey::{HotkeyListener, TriggerEvent};
+use linux_voice_typer::{injector, process_recording, setup};
 
 fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
@@ -156,7 +142,10 @@ fn run_voice_loop(config: &Config, force_terminal_hotkey: bool) -> AppResult<()>
 
                 info!("stop recording");
                 match process_recording(active, config) {
-                    Ok(()) => info!("ready for next capture"),
+                    Ok(transcript) => {
+                        info!("transcript: {}", transcript);
+                        info!("ready for next capture");
+                    }
                     Err(err) => error!("recording pipeline failed: {err}"),
                 }
             }
@@ -170,19 +159,4 @@ fn run_voice_loop(config: &Config, force_terminal_hotkey: bool) -> AppResult<()>
 fn run_paste_test(paths: &AppPaths) -> AppResult<()> {
     let config = Config::load_unvalidated(paths.config_path())?;
     injector::run_paste_test(&config)
-}
-
-fn process_recording(recorder: Recorder, config: &Config) -> AppResult<()> {
-    let wav_path = recorder.stop_and_save(&config.temp_dir)?;
-    let transcript = transcriber::transcribe(config, &wav_path)?;
-
-    if transcript.trim().is_empty() {
-        return Err(AppError::CommandFailed(
-            "transcriber returned empty text".into(),
-        ));
-    }
-
-    info!("transcript: {}", transcript);
-    injector::inject_text(config, &transcript)?;
-    Ok(())
 }

@@ -35,31 +35,7 @@ pub struct RuntimeStatus {
 }
 
 pub fn run_doctor(paths: &AppPaths) -> AppResult<()> {
-    let report = collect_report(paths)?;
-
-    println!("linux-voice-typer doctor\n");
-    println!("Sistema:");
-    for check in &report.system_checks {
-        println!("[{}] {}", label(check.level), check.message);
-    }
-
-    println!("\nPaste backend:");
-    for check in &report.paste_checks {
-        println!("[{}] {}", label(check.level), check.message);
-    }
-
-    println!("\nArquivos e audio:");
-    for check in &report.runtime_checks {
-        println!("[{}] {}", label(check.level), check.message);
-    }
-
-    if report.has_errors() {
-        println!("\nPara corrigir, rode:");
-        println!("linux-voice-typer setup");
-        println!("ou durante desenvolvimento:");
-        println!("cargo run -- setup");
-    }
-
+    println!("{}", doctor_report_text(paths)?);
     Ok(())
 }
 
@@ -69,6 +45,36 @@ pub fn runtime_status(paths: &AppPaths) -> AppResult<RuntimeStatus> {
         ready: report.fatal_issues.is_empty(),
         issues: report.fatal_issues,
     })
+}
+
+pub fn doctor_report_text(paths: &AppPaths) -> AppResult<String> {
+    let report = collect_report(paths)?;
+    let mut output = String::new();
+
+    output.push_str("linux-voice-typer doctor\n\n");
+    output.push_str("Sistema:\n");
+    for check in &report.system_checks {
+        output.push_str(&format!("[{}] {}\n", label(check.level), check.message));
+    }
+
+    output.push_str("\nPaste backend:\n");
+    for check in &report.paste_checks {
+        output.push_str(&format!("[{}] {}\n", label(check.level), check.message));
+    }
+
+    output.push_str("\nArquivos e audio:\n");
+    for check in &report.runtime_checks {
+        output.push_str(&format!("[{}] {}\n", label(check.level), check.message));
+    }
+
+    if report.has_errors() {
+        output.push_str("\nPara corrigir, rode:\n");
+        output.push_str("linux-voice-typer setup\n");
+        output.push_str("ou durante desenvolvimento:\n");
+        output.push_str("cargo run -- setup\n");
+    }
+
+    Ok(output)
 }
 
 #[derive(Debug)]

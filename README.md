@@ -29,6 +29,7 @@ Este projeto resolve esse caminho de ponta a ponta:
 - **Auto-paste no Wayland:** backend `uinput` para contornar limitacoes do `wtype`.
 - **Modo editor:** envia `Ctrl+V` para inputs comuns.
 - **Modo terminal:** envia `Ctrl+Shift+V` para terminais, incluindo Codex CLI.
+- **Interface desktop experimental:** janela visual com status, configuracoes e tray icon.
 - **Fallback seguro:** mesmo se o auto-paste falhar, o texto permanece no clipboard.
 
 ## Uso rapido
@@ -61,6 +62,20 @@ cargo run -- run --terminal-hotkey --terminal-paste
 Nesse modo, pressione `Enter` para iniciar a gravacao e `Enter` novamente para
 parar, transcrever e colar.
 
+## Interface desktop
+
+Além da CLI, o projeto possui uma interface desktop experimental com tray icon
+para iniciar/parar o serviço, escolher modo Editor/Terminal e acessar
+diagnósticos.
+
+```bash
+cd apps/desktop
+npm install
+npm run tauri dev
+```
+
+Para detalhes técnicos, veja [TECHNICAL.md](TECHNICAL.md).
+
 ## Como funciona
 
 ```text
@@ -72,16 +87,8 @@ atalho pressionado
   -> envia Ctrl+V ou Ctrl+Shift+V
 ```
 
-O modo recomendado para Wayland e:
-
-```toml
-paste_backend = "uinput"
-restore_clipboard = false
-```
-
-O backend `uinput` cria um teclado virtual temporario e envia o atalho de
-colagem. Isso permite funcionar mesmo quando o compositor nao aceita o protocolo
-`virtual-keyboard` usado por ferramentas como `wtype`.
+No Wayland, o projeto usa um backend de colagem compatível com uso diário em
+editores e terminais. Os detalhes ficam em [TECHNICAL.md](TECHNICAL.md).
 
 ## Para quem e
 
@@ -107,13 +114,14 @@ Este projeto ainda e um MVP, mas ja valida o fluxo principal:
 - auto-paste em editor
 - auto-paste em terminal
 - fallback para Wayland via `uinput`
+- interface desktop experimental com tray icon
 
 ## Proximos passos
 
-- interface grafica ou tray icon
 - historico de transcricoes
 - selecao de microfone
 - selecao de modelo Whisper
+- melhorias de empacotamento desktop
 - empacotamento `.deb` ou `AppImage`
 - servico `systemd --user`
 

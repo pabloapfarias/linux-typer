@@ -15,7 +15,7 @@ pub struct AppPaths {
 
 impl AppPaths {
     pub fn discover() -> AppResult<Self> {
-        let project_root = env::current_dir()?;
+        let project_root = discover_project_root(env::current_dir()?);
         let config_path = project_root.join("config.toml");
 
         let data_root = dirs::data_local_dir().ok_or_else(|| {
@@ -71,4 +71,16 @@ impl AppPaths {
     pub fn temp_dir(&self) -> &Path {
         &self.temp_dir
     }
+}
+
+fn discover_project_root(start: PathBuf) -> PathBuf {
+    for candidate in start.ancestors() {
+        if candidate.join("config.example.toml").is_file()
+            && candidate.join("src").join("main.rs").is_file()
+        {
+            return candidate.to_path_buf();
+        }
+    }
+
+    start
 }

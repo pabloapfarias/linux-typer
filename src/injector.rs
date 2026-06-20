@@ -51,26 +51,32 @@ pub fn inject_text(config: &Config, text: &str) -> AppResult<()> {
 }
 
 pub fn run_paste_test(config: &Config) -> AppResult<()> {
-    println!("Copied test text to clipboard.");
+    print!("{}", paste_test_report(config)?);
+    Ok(())
+}
+
+pub fn paste_test_report(config: &Config) -> AppResult<String> {
+    let mut report = String::new();
+    report.push_str("Copied test text to clipboard.\n");
 
     let verified = clipboard::write_and_verify_clipboard(PASTE_TEST_TEXT)?;
     if verified {
-        println!("Clipboard verification: OK");
+        report.push_str("Clipboard verification: OK\n");
     } else {
         error!("Clipboard verification: FAILED");
-        println!("Clipboard verification: FAILED — wl-paste did not return expected text");
-        println!("Check if you are in a Wayland session and wl-clipboard is working:");
-        println!("  echo \"teste\" | wl-copy && wl-paste");
-        return Ok(());
+        report.push_str("Clipboard verification: FAILED — wl-paste did not return expected text\n");
+        report.push_str("Check if you are in a Wayland session and wl-clipboard is working:\n");
+        report.push_str("  echo \"teste\" | wl-copy && wl-paste\n");
+        return Ok(report);
     }
 
-    println!(
-        "Trying paste backend: {}",
+    report.push_str(&format!(
+        "Trying paste backend: {}\n",
         config.effective_paste_backend().as_str()
-    );
+    ));
     let outcome = write_and_paste(config, PASTE_TEST_TEXT, PasteAction::Test)?;
-    let _ = outcome; // outcome messages already printed by backend functions
-    Ok(())
+    report.push_str(&format!("Paste outcome: {:?}\n", outcome));
+    Ok(report)
 }
 
 pub fn detect_paste_backend_status() -> PasteBackendStatus {
