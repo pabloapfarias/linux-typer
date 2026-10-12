@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Manager, State, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 
 struct DesktopState {
     paths: AppPaths,
@@ -36,6 +36,7 @@ struct DesktopConfig {
     paste_shortcut: PasteShortcut,
     trim_text: bool,
     temp_dir: String,
+    auto_start_service: bool,
     start_minimized: bool,
     start_with_system: bool,
 }
@@ -52,27 +53,30 @@ fn get_status(state: State<'_, DesktopState>) -> VoiceTyperStatus {
 }
 
 #[tauri::command]
-fn start_service(state: State<'_, DesktopState>) -> Result<VoiceTyperStatus, String> {
+fn start_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<VoiceTyperStatus, String> {
     if state.service.is_running() {
         return Ok(state.service.status());
     }
     let config = load_validated_config(&state.paths).map_err(to_message)?;
     state.service.reload_config(config).map_err(to_message)?;
     state.service.start().map_err(to_message)?;
+    update_tray_icon(&app, "idle");
     Ok(state.service.status())
 }
 
 #[tauri::command]
-fn stop_service(state: State<'_, DesktopState>) -> Result<VoiceTyperStatus, String> {
+fn stop_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<VoiceTyperStatus, String> {
     state.service.stop().map_err(to_message)?;
+    update_tray_icon(&app, "stopped");
     Ok(state.service.status())
 }
 
 #[tauri::command]
-fn restart_service(state: State<'_, DesktopState>) -> Result<VoiceTyperStatus, String> {
+fn restart_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<VoiceTyperStatus, String> {
     let config = load_validated_config(&state.paths).map_err(to_message)?;
     state.service.reload_config(config).map_err(to_message)?;
     state.service.restart().map_err(to_message)?;
+    update_tray_icon(&app, "idle");
     Ok(state.service.status())
 }
 
@@ -85,15 +89,23 @@ fn get_config(state: State<'_, DesktopState>) -> Result<DesktopConfig, String> {
 #[tauri::command]
 fn save_config(
     state: State<'_, DesktopState>,
+    app: AppHandle,
     config: DesktopConfig,
 ) -> Result<VoiceTyperStatus, String> {
+    let was_running = state.service.is_running();
+    let start_with_system = config.start_with_system;
     let config = desktop_to_config(config);
     config.save(state.paths.config_path()).map_err(to_message)?;
+    let _ = linux_voice_typer::autostart::set_autostart_enabled(start_with_system);
     state.service.reload_config(config).map_err(to_message)?;
+    if was_running {
+        state.service.restart().map_err(to_message)?;
+        update_tray_icon(&app, "idle");
+    }
     let mut status = state.service.status();
-    if status.running {
+    if was_running {
         status.recent_events.push(
-            "Configuração salva. Reinicie o serviço para aplicar as alterações.".into(),
+            "Configuração salva e serviço reiniciado com o novo atalho.".into(),
         );
     } else {
         status
@@ -191,7 +203,39 @@ pub fn run() {
     tauri::Builder::default()
         .manage(state)
         .setup(|app| {
+            let app_handle = app.handle().clone();
+            let state = app.state::<DesktopState>();
+            let app_h = app_handle.clone();
+            let _ = state.service.set_state_listener(std::sync::Arc::new(move |feedback| {
+                let state_str = match feedback.state {
+                    linux_voice_typer::service::ServiceState::Idle => "idle",
+                    linux_voice_typer::service::ServiceState::Recording => "recording",
+                    linux_voice_typer::service::ServiceState::Transcribing => "transcribing",
+                };
+                update_tray_icon(&app_h, state_str);
+                let _ = app_h.emit(
+                    "dictation-state",
+                    serde_json::json!({
+                        "state": state_str,
+                        "transcript": feedback.transcript,
+                        "level": feedback.level,
+                        "elapsed_secs": feedback.elapsed_secs,
+                    }),
+                );
+            }));
             install_tray(app.handle())?;
+
+            let config = load_config_or_default(&state.paths)
+                .unwrap_or_else(|_| Config::default_for_paths(&state.paths, WhisperModel::Small));
+            if config.auto_start_service {
+                if let Err(err) = state.service.start() {
+                    eprintln!("failed to auto-start service: {err}");
+                }
+                update_tray_icon(app.handle(), "idle");
+            } else {
+                update_tray_icon(app.handle(), "stopped");
+            }
+
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -220,6 +264,19 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+fn update_tray_icon(app: &AppHandle, state: &str) {
+    if let Some(tray) = app.tray_by_id("main-tray") {
+        let bytes: &[u8] = match state {
+            "recording" => include_bytes!("../icons/icon_red.png"),
+            "stopped" => include_bytes!("../icons/icon_gray.png"),
+            _ => include_bytes!("../icons/icon_green.png"),
+        };
+        if let Ok(icon) = Image::from_bytes(bytes) {
+            let _ = tray.set_icon(Some(icon));
+        }
+    }
+}
+
 fn install_tray(app: &AppHandle) -> tauri::Result<()> {
     let title = MenuItem::with_id(app, "title", "Linux Voice Typer", false, None::<&str>)?;
     let start = MenuItem::with_id(app, "start", "Iniciar", true, None::<&str>)?;
@@ -235,7 +292,7 @@ fn install_tray(app: &AppHandle) -> tauri::Result<()> {
             &title, &start, &stop, &editor, &terminal, &settings, &doctor, &quit,
         ],
     )?;
-    let icon = Image::from_bytes(include_bytes!("../icons/icon.png"))?;
+    let icon = Image::from_bytes(include_bytes!("../icons/icon_gray.png"))?;
 
     TrayIconBuilder::with_id("main-tray")
         .icon(icon)
@@ -247,11 +304,13 @@ fn install_tray(app: &AppHandle) -> tauri::Result<()> {
                 if let Ok(config) = load_validated_config(&state.paths) {
                     let _ = state.service.reload_config(config);
                     let _ = state.service.start();
+                    update_tray_icon(app, "idle");
                 }
             }
             "stop" => {
                 let state = app.state::<DesktopState>();
                 let _ = state.service.stop();
+                update_tray_icon(app, "stopped");
             }
             "editor" => {
                 let state = app.state::<DesktopState>();
@@ -322,8 +381,9 @@ fn config_to_desktop(config: Config) -> DesktopConfig {
         paste_shortcut: config.paste_shortcut,
         trim_text: config.trim_text,
         temp_dir: config.temp_dir.display().to_string(),
-        start_minimized: false,
-        start_with_system: false,
+        auto_start_service: config.auto_start_service,
+        start_minimized: config.start_minimized,
+        start_with_system: linux_voice_typer::autostart::is_autostart_enabled(),
     }
 }
 
@@ -344,6 +404,9 @@ fn desktop_to_config(config: DesktopConfig) -> Config {
         paste_shortcut: config.paste_shortcut,
         trim_text: config.trim_text,
         temp_dir: PathBuf::from(config.temp_dir),
+        auto_start_service: config.auto_start_service,
+        start_minimized: config.start_minimized,
+        start_with_system: config.start_with_system,
     }
 }
 

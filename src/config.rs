@@ -53,6 +53,10 @@ fn default_paste_shortcut() -> PasteShortcut {
     PasteShortcut::CtrlV
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub hotkey: String,
@@ -68,6 +72,12 @@ pub struct Config {
     pub paste_shortcut: PasteShortcut,
     pub trim_text: bool,
     pub temp_dir: PathBuf,
+    #[serde(default = "default_true")]
+    pub auto_start_service: bool,
+    #[serde(default)]
+    pub start_minimized: bool,
+    #[serde(default)]
+    pub start_with_system: bool,
 }
 
 impl Config {
@@ -99,7 +109,7 @@ impl Config {
 
     pub fn default_for_paths(paths: &AppPaths, model: WhisperModel) -> Self {
         Self {
-            hotkey: "Ctrl+Alt+Space".into(),
+            hotkey: "Control+Alt+Space".into(),
             language: "pt".into(),
             model_path: paths.model_path(model),
             whisper_bin: paths.whisper_bin_path(),
@@ -110,6 +120,9 @@ impl Config {
             paste_shortcut: PasteShortcut::CtrlV,
             trim_text: true,
             temp_dir: paths.temp_dir().to_path_buf(),
+            auto_start_service: true,
+            start_minimized: false,
+            start_with_system: false,
         }
     }
 

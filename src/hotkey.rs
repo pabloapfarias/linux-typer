@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver};
@@ -155,19 +154,35 @@ fn parse_hotkey(value: &str) -> AppResult<Chord> {
     for part in value.split('+') {
         let token = part.trim().to_ascii_lowercase();
         let key = match token.as_str() {
-            "ctrl" | "control" => Key::ControlLeft,
-            "alt" => Key::AltLeft,
-            "shift" => Key::ShiftLeft,
-            "super" | "meta" | "win" => Key::MetaLeft,
+            "ctrl" | "control" | "ctrlleft" | "controlleft" => Key::ControlLeft,
+            "ctrlright" | "controlright" => Key::ControlRight,
+            "alt" | "altleft" => Key::AltLeft,
+            "altright" | "altgr" => Key::AltRight,
+            "shift" | "shiftleft" => Key::ShiftLeft,
+            "shiftright" => Key::ShiftRight,
+            "super" | "meta" | "win" | "superleft" | "metaleft" | "winleft" => Key::MetaLeft,
+            "superright" | "metaright" | "winright" => Key::MetaRight,
             "space" => Key::Space,
             "enter" | "return" => Key::Enter,
             "tab" => Key::Tab,
             "esc" | "escape" => Key::Escape,
             "backspace" => Key::Backspace,
-            "up" => Key::ArrowUp,
-            "down" => Key::ArrowDown,
-            "left" => Key::ArrowLeft,
-            "right" => Key::ArrowRight,
+            "insert" => Key::Insert,
+            "delete" | "del" => Key::Delete,
+            "home" => Key::Home,
+            "end" => Key::End,
+            "pageup" | "page_up" | "pgup" => Key::PageUp,
+            "pagedown" | "page_down" | "pgdn" => Key::PageDown,
+            "capslock" | "caps_lock" | "caps" => Key::CapsLock,
+            "numlock" | "num_lock" => Key::NumLock,
+            "scrolllock" | "scroll_lock" => Key::ScrollLock,
+            "printscreen" | "prtscr" | "print" => Key::PrintScreen,
+            "pause" => Key::Pause,
+            "menu" => Key::Menu,
+            "up" | "arrowup" => Key::ArrowUp,
+            "down" | "arrowdown" => Key::ArrowDown,
+            "left" | "arrowleft" => Key::ArrowLeft,
+            "right" | "arrowright" => Key::ArrowRight,
             "f1" => Key::F1,
             "f2" => Key::F2,
             "f3" => Key::F3,
@@ -180,6 +195,18 @@ fn parse_hotkey(value: &str) -> AppResult<Chord> {
             "f10" => Key::F10,
             "f11" => Key::F11,
             "f12" => Key::F12,
+            "f13" => Key::F13,
+            "f14" => Key::F14,
+            "f15" => Key::F15,
+            "f16" => Key::F16,
+            "f17" => Key::F17,
+            "f18" => Key::F18,
+            "f19" => Key::F19,
+            "f20" => Key::F20,
+            "f21" => Key::F21,
+            "f22" => Key::F22,
+            "f23" => Key::F23,
+            "f24" => Key::F24,
             "a" => Key::A,
             "b" => Key::B,
             "c" => Key::C,
@@ -216,6 +243,33 @@ fn parse_hotkey(value: &str) -> AppResult<Chord> {
             "7" => Key::Digit7,
             "8" => Key::Digit8,
             "9" => Key::Digit9,
+            "numpad0" => Key::Numpad0,
+            "numpad1" => Key::Numpad1,
+            "numpad2" => Key::Numpad2,
+            "numpad3" => Key::Numpad3,
+            "numpad4" => Key::Numpad4,
+            "numpad5" => Key::Numpad5,
+            "numpad6" => Key::Numpad6,
+            "numpad7" => Key::Numpad7,
+            "numpad8" => Key::Numpad8,
+            "numpad9" => Key::Numpad9,
+            "numpadadd" | "numpadplus" => Key::NumpadAdd,
+            "numpadsubtract" | "numpadminus" => Key::NumpadSubtract,
+            "numpadmultiply" => Key::NumpadMultiply,
+            "numpaddivide" => Key::NumpadDivide,
+            "numpadenter" => Key::NumpadEnter,
+            "numpaddecimal" | "numpaddot" => Key::NumpadDecimal,
+            "backtick" | "`" => Key::Backtick,
+            "minus" | "-" => Key::Minus,
+            "equal" | "=" => Key::Equal,
+            "bracketleft" | "[" => Key::BracketLeft,
+            "bracketright" | "]" => Key::BracketRight,
+            "backslash" | "\\" => Key::Backslash,
+            "semicolon" | ";" => Key::Semicolon,
+            "quote" | "'" => Key::Quote,
+            "comma" | "," => Key::Comma,
+            "period" | "." => Key::Period,
+            "slash" | "/" => Key::Slash,
             _ => {
                 return Err(AppError::InvalidConfig(format!(
                     "unsupported hotkey token: {part}"
@@ -232,7 +286,24 @@ fn parse_hotkey(value: &str) -> AppResult<Chord> {
     Ok(Chord::of(keys))
 }
 
-#[allow(dead_code)]
-fn _debug_path(path: PathBuf) -> PathBuf {
-    path
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_hotkey_combinations() {
+        assert!(parse_hotkey("Control+Alt+Space").is_ok());
+        assert!(parse_hotkey("F8").is_ok());
+        assert!(parse_hotkey("F12").is_ok());
+        assert!(parse_hotkey("F13").is_ok());
+        assert!(parse_hotkey("F24").is_ok());
+        assert!(parse_hotkey("Insert").is_ok());
+        assert!(parse_hotkey("Alt+Space").is_ok());
+        assert!(parse_hotkey("Super+Space").is_ok());
+        assert!(parse_hotkey("Shift+F10").is_ok());
+        assert!(parse_hotkey("Control+Shift+V").is_ok());
+        assert!(parse_hotkey("").is_err());
+        assert!(parse_hotkey("InvalidKey123").is_err());
+    }
 }
+

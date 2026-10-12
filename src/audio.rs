@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -23,6 +24,7 @@ pub struct Recorder {
     stream: Option<Stream>,
     buffer: Arc<Mutex<SharedBuffer>>,
     input_sample_rate: u32,
+    latest_level: Arc<AtomicU32>,
 }
 
 impl Recorder {
@@ -48,12 +50,20 @@ impl Recorder {
             samples: Vec::new(),
             channels: input_channels,
         }));
+        let latest_level = Arc::new(AtomicU32::new(0));
 
         let err_fn = |err| {
             warn!("audio stream error: {err}");
         };
 
-        let stream = build_input_stream(&device, &config, sample_format, buffer.clone(), err_fn)?;
+        let stream = build_input_stream(
+            &device,
+            &config,
+            sample_format,
+            buffer.clone(),
+            latest_level.clone(),
+            err_fn,
+        )?;
         stream.play()?;
 
         Ok(Self {
@@ -61,7 +71,13 @@ impl Recorder {
             stream: Some(stream),
             buffer,
             input_sample_rate,
+            latest_level,
         })
+    }
+
+    pub fn current_level(&self) -> f32 {
+        let raw = self.latest_level.load(Ordering::Relaxed);
+        (raw as f32 / 1000.0).clamp(0.0, 1.0)
     }
 
     pub fn stop_and_save(mut self, temp_dir: &Path) -> AppResult<PathBuf> {
@@ -121,18 +137,19 @@ fn build_input_stream<E>(
     config: &StreamConfig,
     sample_format: SampleFormat,
     buffer: Arc<Mutex<SharedBuffer>>,
+    latest_level: Arc<AtomicU32>,
     err_fn: E,
 ) -> AppResult<Stream>
 where
     E: FnMut(cpal::Error) + Send + 'static,
 {
     match sample_format {
-        SampleFormat::F32 => build_stream::<f32, E>(device, config, buffer, err_fn),
-        SampleFormat::I16 => build_stream::<i16, E>(device, config, buffer, err_fn),
-        SampleFormat::I32 => build_stream::<i32, E>(device, config, buffer, err_fn),
-        SampleFormat::U8 => build_stream::<u8, E>(device, config, buffer, err_fn),
-        SampleFormat::U16 => build_stream::<u16, E>(device, config, buffer, err_fn),
-        SampleFormat::U32 => build_stream::<u32, E>(device, config, buffer, err_fn),
+        SampleFormat::F32 => build_stream::<f32, E>(device, config, buffer, latest_level, err_fn),
+        SampleFormat::I16 => build_stream::<i16, E>(device, config, buffer, latest_level, err_fn),
+        SampleFormat::I32 => build_stream::<i32, E>(device, config, buffer, latest_level, err_fn),
+        SampleFormat::U8 => build_stream::<u8, E>(device, config, buffer, latest_level, err_fn),
+        SampleFormat::U16 => build_stream::<u16, E>(device, config, buffer, latest_level, err_fn),
+        SampleFormat::U32 => build_stream::<u32, E>(device, config, buffer, latest_level, err_fn),
         other => Err(AppError::Unsupported(format!(
             "unsupported input sample format: {other:?}"
         ))),
@@ -143,6 +160,7 @@ fn build_stream<T, E>(
     device: &cpal::Device,
     config: &StreamConfig,
     buffer: Arc<Mutex<SharedBuffer>>,
+    latest_level: Arc<AtomicU32>,
     mut err_fn: E,
 ) -> AppResult<Stream>
 where
@@ -154,11 +172,22 @@ where
     let stream = device.build_input_stream(
         config.clone(),
         move |data: &[T], _| {
+            let mut sum_sq = 0.0f32;
+            let mut count = 0usize;
             if let Ok(mut shared) = buffer.lock() {
                 shared.channels = channels;
-                shared
-                    .samples
-                    .extend(data.iter().map(|sample| f32::from_sample(*sample)));
+                for sample in data {
+                    let val = f32::from_sample(*sample);
+                    sum_sq += val * val;
+                    count += 1;
+                    shared.samples.push(val);
+                }
+            }
+            if count > 0 {
+                let rms = (sum_sq / count as f32).sqrt();
+                // Amplify voice range naturally (normal speaking RMS is ~0.02 - 0.20)
+                let normalized = (rms * 7.0).clamp(0.0, 1.0);
+                latest_level.store((normalized * 1000.0) as u32, Ordering::Relaxed);
             }
         },
         move |err| err_fn(err),
