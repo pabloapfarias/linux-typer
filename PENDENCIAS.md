@@ -56,16 +56,16 @@ concluídos em 2026-10-12 — ver §Concluídos.
 ## P3 — Qualidade e infraestrutura
 
 ### P3-1 · Zerar warnings do clippy
-- **Onde:** `src/audio.rs:173` (clone em `Copy`), `src/audio.rs:193` (closure redundante), `src/config.rs:172` (`cmp_owned`), `src/service.rs:284` (`if` colapsável) e `apps/desktop/src-tauri/src/lib.rs:366` (`if` colapsável no handler do tray)
+- **Onde:** `src/audio.rs:173` (clone em `Copy`), `src/audio.rs:193` (closure redundante), `src/config.rs:178` (`cmp_owned`), `src/service.rs:321` (`if` colapsável) e `apps/desktop/src-tauri/src/lib.rs:375` (`if` colapsável no handler do tray)
 
 ### P3-2 · Remover código morto
 - **Onde:** `clipboard::_as_os_str` (`src/clipboard.rs:121-124`), `setup::_canonical` (`src/setup.rs:351-354`)
 
 ### P3-3 · Feedback ao iniciar pelo tray
-- **Onde:** `apps/desktop/src-tauri/src/lib.rs:323-329` — erro de config inválida é ignorado silenciosamente no menu "Iniciar"; publicar evento/toast ou OSD.
+- **Onde:** `apps/desktop/src-tauri/src/lib.rs:342-354` — erro de config inválida é ignorado silenciosamente no menu "Iniciar"; publicar evento/toast ou OSD.
 
 ### P3-4 · Validação no `save_config`
-- **Onde:** `apps/desktop/src-tauri/src/lib.rs:90-116` — hoje grava sem validar caminhos; o erro só aparece na primeira ditada. Avaliar validar antes de gravar ou avisar sem bloquear.
+- **Onde:** `apps/desktop/src-tauri/src/lib.rs:98-124` — hoje grava sem validar caminhos; o erro só aparece na primeira ditada. Avaliar validar antes de gravar ou avisar sem bloquear.
 
 ### P3-5 · Exit code do CLI em ambiente incompleto
 - **Onde:** `src/main.rs:44-53` — `run` retorna sucesso (exit 0) mesmo com ambiente incompleto; usar exit code de erro para automação.
@@ -81,10 +81,10 @@ concluídos em 2026-10-12 — ver §Concluídos.
 - **Situação:** contêm apenas `.gitkeep` e não são usados pelo código (tudo vai para `~/.local/share/linux-voice-typer/`). Remover ou explicar a finalidade.
 
 ### P3-9 · Polling de status chama `cpal` a cada segundo
-- **Onde:** `VoiceTyperService::status()` → `default_microphone_name()` (`src/service.rs:508-514`), chamado pela UI a cada 1s (`apps/desktop/src/main.js:939`). Cachear o nome/estado do microfone.
+- **Onde:** `VoiceTyperService::status()` → `default_microphone_name()` (`src/service.rs:631-637`), chamado pela UI a cada 1s (`apps/desktop/src/main.js:960`). Cachear o nome/estado do microfone.
 
 ### P3-10 · Revisar botões Iniciar/Pausar duplicados
-- **Onde:** `apps/desktop/src/main.js:956-976` — "Iniciar" e "Pausar" usam o mesmo handler de alternância; revisar rótulos/estado para evitar ação invertida.
+- **Onde:** `apps/desktop/src/main.js:977-997` — "Iniciar" e "Pausar" usam o mesmo handler de alternância; revisar rótulos/estado para evitar ação invertida.
 
 ---
 
