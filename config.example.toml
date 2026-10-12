@@ -46,3 +46,7 @@ start_with_system = false
 # Sem host StatusNotifier detectado (ex.: GNOME sem extensao AppIndicator),
 # fechar a janela encerra o app mesmo com close_to_tray = true.
 close_to_tray = true
+
+# osd_enabled: exibe notificacoes de desktop (gravacao, transcricao, erros e
+# inicio/parada do servico). false desativa todo o OSD.
+osd_enabled = true

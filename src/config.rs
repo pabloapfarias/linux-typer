@@ -80,6 +80,8 @@ pub struct Config {
     pub start_with_system: bool,
     #[serde(default = "default_true")]
     pub close_to_tray: bool,
+    #[serde(default = "default_true")]
+    pub osd_enabled: bool,
 }
 
 impl Config {
@@ -126,6 +128,7 @@ impl Config {
             start_minimized: false,
             start_with_system: false,
             close_to_tray: true,
+            osd_enabled: true,
         }
     }
 

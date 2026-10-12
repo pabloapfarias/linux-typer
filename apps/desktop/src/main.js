@@ -280,6 +280,14 @@ app.innerHTML = `
                 <span class="check-sub">Ao fechar a janela, mantém o app rodando no System Tray. Desative para que o fechamento encerre o aplicativo (útil no GNOME sem extensão AppIndicator).</span>
               </div>
             </label>
+
+            <label class="checkbox-card">
+              <input id="cfg-osd-enabled" type="checkbox" />
+              <div>
+                <span class="check-label">Mostrar Notificações (OSD)</span>
+                <span class="check-sub">Exibe avisos de desktop para gravação, transcrição, erros e início/parada do serviço.</span>
+              </div>
+            </label>
           </div>
         </form>
       </section>
@@ -862,6 +870,7 @@ function renderConfig(config) {
   $('cfg-start-minimized').checked = Boolean(config.start_minimized);
   $('cfg-start-system').checked = Boolean(config.start_with_system);
   $('cfg-close-to-tray').checked = config.close_to_tray !== false;
+  $('cfg-osd-enabled').checked = config.osd_enabled !== false;
 }
 
 function collectConfig() {
@@ -882,6 +891,7 @@ function collectConfig() {
     start_minimized: $('cfg-start-minimized').checked,
     start_with_system: $('cfg-start-system').checked,
     close_to_tray: $('cfg-close-to-tray').checked,
+    osd_enabled: $('cfg-osd-enabled').checked,
   };
 }
 

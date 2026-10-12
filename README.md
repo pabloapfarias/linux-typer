@@ -149,6 +149,7 @@ auto_start_service = true     # inicia o servico ao abrir o app
 start_minimized = false       # reservado (ainda nao aplicado)
 start_with_system = true      # entrada em ~/.config/autostart
 close_to_tray = true          # fechar a janela esconde para a bandeja (se houver tray)
+osd_enabled = true            # notificacoes de desktop (false desativa todo o OSD)
 ```
 
 ---

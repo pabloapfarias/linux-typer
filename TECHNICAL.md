@@ -509,10 +509,14 @@ a notificação anterior:
 | Concluído | `emblem-default` | 3,5s | "✓ Ditado Colado!" + preview de ate 60 caracteres |
 | Ocioso (limpeza) | `edit-clear` | 1,5s | "🎙️ Pronto" / "Pode ditar novamente quando quiser." |
 | Aviso | `dialog-warning` | 5s | "⚠️ Hotkey global indisponível" / detalhe do problema |
+| Erro | `dialog-error` | 4s | "⚠️ Falha ao gravar" / "⚠️ Ditado falhou" + mensagem amigável |
+| Ciclo de vida | `media-playback-start` / `media-playback-pause` | 2,5s | "▶️ Serviço iniciado" / "⏸️ Serviço parado" |
 
 Detalhes e limitações atuais:
 
 - a CLI pura não envia notificações; o OSD é exclusivo do serviço da UI desktop.
+- o campo `osd_enabled` (default `true`) desativa todo o OSD.
+- o OSD de ciclo de vida é suprimido em reinícios internos (ex.: salvar configurações).
 - se `notify-send` não existir, o erro é ignorado silenciosamente.
 - os nomes de ícone dependem do tema de ícones instalado.
 - o estado `Idle` sem transcrição (falha na transcrição, erro ao gravar, parada
@@ -767,7 +771,6 @@ ydotool key 29:1 47:1 47:0 29:0
 - Nao ha escolha de microfone por CLI ainda.
 - `start_minimized` existe no config.toml e na UI, mas ainda nao e aplicado: a janela abre visivel.
 - O clipboard depende de `wl-clipboard`, entao o app e Wayland-first; em X11 puro a colagem nao funciona.
-- Arquivos temporarios (`recording-*.wav`, `whisper-output-*.txt`) nao sao removidos automaticamente.
 
 ## Proximos passos
 

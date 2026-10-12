@@ -39,11 +39,13 @@ struct DesktopConfig {
     auto_start_service: bool,
     start_minimized: bool,
     start_with_system: bool,
-    #[serde(default = "default_close_to_tray")]
+    #[serde(default = "default_true_flag")]
     close_to_tray: bool,
+    #[serde(default = "default_true_flag")]
+    osd_enabled: bool,
 }
 
-fn default_close_to_tray() -> bool {
+fn default_true_flag() -> bool {
     true
 }
 
@@ -456,6 +458,7 @@ fn config_to_desktop(config: Config) -> DesktopConfig {
         start_minimized: config.start_minimized,
         start_with_system: linux_voice_typer::autostart::is_autostart_enabled(),
         close_to_tray: config.close_to_tray,
+        osd_enabled: config.osd_enabled,
     }
 }
 
@@ -480,6 +483,7 @@ fn desktop_to_config(config: DesktopConfig) -> Config {
         start_minimized: config.start_minimized,
         start_with_system: config.start_with_system,
         close_to_tray: config.close_to_tray,
+        osd_enabled: config.osd_enabled,
     }
 }
 

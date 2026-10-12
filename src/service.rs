@@ -62,6 +62,7 @@ struct ServiceInner {
     last_transcript: Option<String>,
     events: VecDeque<String>,
     listener: Option<StateListener>,
+    session: u64,
 }
 
 impl VoiceTyperService {
@@ -76,11 +77,16 @@ impl VoiceTyperService {
                 last_transcript: None,
                 events: VecDeque::new(),
                 listener: None,
+                session: 0,
             })),
         }
     }
 
     pub fn start(&self) -> AppResult<()> {
+        self.start_inner(true)
+    }
+
+    fn start_inner(&self, notify: bool) -> AppResult<()> {
         let mut inner = self.lock_inner()?;
         if inner.running {
             push_event(&mut inner, "Serviço já estava rodando");
@@ -91,10 +97,20 @@ impl VoiceTyperService {
         let shutdown = Arc::new(AtomicBool::new(false));
         let worker_shutdown = shutdown.clone();
         let service_inner = self.inner.clone();
+        let osd_enabled = inner.config.osd_enabled;
 
         inner.running = true;
         inner.shutdown = Some(shutdown);
         push_event(&mut inner, "Serviço iniciado");
+
+        if notify && osd_enabled {
+            send_osd(
+                "media-playback-start",
+                "2500",
+                "▶️ Serviço iniciado",
+                "O atalho global está ativo.",
+            );
+        }
 
         inner.handle = Some(
             thread::Builder::new()
@@ -109,6 +125,10 @@ impl VoiceTyperService {
     }
 
     pub fn stop(&self) -> AppResult<()> {
+        self.stop_inner(true)
+    }
+
+    fn stop_inner(&self, notify: bool) -> AppResult<()> {
         let handle = {
             let mut inner = self.lock_inner()?;
             if !inner.running {
@@ -119,6 +139,9 @@ impl VoiceTyperService {
             if let Some(shutdown) = &inner.shutdown {
                 shutdown.store(true, Ordering::Relaxed);
             }
+            // Invalida transcricoes em andamento: resultados antigos nao podem
+            // sobrescrever o estado depois que o servico parar.
+            inner.session = inner.session.wrapping_add(1);
             push_event(&mut inner, "Parando serviço");
             inner.handle.take()
         };
@@ -131,12 +154,22 @@ impl VoiceTyperService {
         inner.running = false;
         inner.shutdown = None;
         push_event(&mut inner, "Serviço parado");
+
+        if notify && inner.config.osd_enabled {
+            send_osd(
+                "media-playback-pause",
+                "2500",
+                "⏸️ Serviço parado",
+                "Use o tray ou a janela para reativar.",
+            );
+        }
+
         Ok(())
     }
 
     pub fn restart(&self) -> AppResult<()> {
-        self.stop()?;
-        self.start()
+        self.stop_inner(false)?;
+        self.start_inner(false)
     }
 
     pub fn is_running(&self) -> bool {
@@ -264,17 +297,20 @@ fn run_service_loop(
                     "Hotkey global indisponível; modo terminal ativo (sem suporte na GUI)",
                 );
             });
-            send_osd(
-                "dialog-warning",
-                "5000",
-                "⚠️ Hotkey global indisponível",
-                "Não foi possível registrar o atalho global. Verifique permissões de entrada ou conflito com outro aplicativo.",
-            );
+            if config.osd_enabled {
+                send_osd(
+                    "dialog-warning",
+                    "5000",
+                    "⚠️ Hotkey global indisponível",
+                    "Não foi possível registrar o atalho global. Verifique permissões de entrada ou conflito com outro aplicativo.",
+                );
+            }
         }
     }
 
     let mut recorder: Option<Recorder> = None;
     let mut record_start: Option<Instant> = None;
+    let mut session_id: u64 = 0;
     let mut last_tick = Instant::now();
 
     while !shutdown.load(Ordering::Relaxed) {
@@ -300,8 +336,16 @@ fn run_service_loop(
                     continue;
                 }
 
+                session_id = {
+                    let Ok(mut inner) = service_inner.lock() else {
+                        continue;
+                    };
+                    inner.session = inner.session.wrapping_add(1);
+                    inner.session
+                };
+
                 record_start = Some(Instant::now());
-                show_osd_notification(ServiceState::Recording, None);
+                show_osd_notification(ServiceState::Recording, None, config.osd_enabled);
                 notify_feedback(&service_inner, ServiceState::Recording, None, 0.0, 0);
 
                 with_inner(&service_inner, |inner| {
@@ -314,11 +358,19 @@ fn run_service_loop(
                     }
                     Err(err) => {
                         record_start = None;
-                        show_osd_notification(ServiceState::Idle, None);
                         notify_feedback(&service_inner, ServiceState::Idle, None, 0.0, 0);
                         with_inner(&service_inner, |inner| {
                             push_event(inner, format!("Falha ao gravar: {err}"));
                         });
+
+                        if config.osd_enabled {
+                            send_osd(
+                                "dialog-error",
+                                "4000",
+                                "⚠️ Falha ao gravar",
+                                &friendly_error_message(&err),
+                            );
+                        }
                     }
                 }
             }
@@ -328,7 +380,7 @@ fn run_service_loop(
                 };
                 record_start = None;
 
-                show_osd_notification(ServiceState::Transcribing, None);
+                show_osd_notification(ServiceState::Transcribing, None, config.osd_enabled);
                 notify_feedback(&service_inner, ServiceState::Transcribing, None, 0.0, 0);
 
                 with_inner(&service_inner, |inner| {
@@ -337,6 +389,7 @@ fn run_service_loop(
 
                 let service_inner_cloned = service_inner.clone();
                 let config_cloned = config.clone();
+                let session = session_id;
 
                 thread::spawn(move || {
                     let trans_start = Instant::now();
@@ -350,6 +403,17 @@ fn run_service_loop(
                             if done_ticker.load(Ordering::Relaxed) {
                                 break;
                             }
+
+                            // Uma nova gravacao (ou a parada do servico) invalida
+                            // este ticker; o estado atual nao pode ser sobrescrito.
+                            let still_current = inner_ticker
+                                .lock()
+                                .map(|inner| inner.session == session)
+                                .unwrap_or(false);
+                            if !still_current {
+                                break;
+                            }
+
                             let elapsed = trans_start.elapsed().as_secs();
                             notify_feedback(
                                 &inner_ticker,
@@ -365,10 +429,23 @@ fn run_service_loop(
                     done.store(true, Ordering::Relaxed);
                     let _ = ticker_handle.join();
 
+                    let still_current = service_inner_cloned
+                        .lock()
+                        .map(|inner| inner.session == session)
+                        .unwrap_or(false);
+                    if !still_current {
+                        // Sessao antiga: descarta estado, OSD, transcricao e eventos.
+                        return;
+                    }
+
                     match result {
                         Ok(transcript) => {
                             let total_elapsed = trans_start.elapsed().as_secs();
-                            show_osd_notification(ServiceState::Idle, Some(&transcript));
+                            show_osd_notification(
+                                ServiceState::Idle,
+                                Some(&transcript),
+                                config_cloned.osd_enabled,
+                            );
                             notify_feedback(
                                 &service_inner_cloned,
                                 ServiceState::Idle,
@@ -392,7 +469,6 @@ fn run_service_loop(
                             });
                         }
                         Err(err) => {
-                            show_osd_notification(ServiceState::Idle, None);
                             notify_feedback(
                                 &service_inner_cloned,
                                 ServiceState::Idle,
@@ -403,6 +479,15 @@ fn run_service_loop(
                             with_inner(&service_inner_cloned, |inner| {
                                 push_event(inner, format!("Pipeline falhou: {err}"));
                             });
+
+                            if config_cloned.osd_enabled {
+                                send_osd(
+                                    "dialog-error",
+                                    "4000",
+                                    "⚠️ Ditado falhou",
+                                    &friendly_error_message(&err),
+                                );
+                            }
                         }
                     }
                 });
@@ -410,7 +495,7 @@ fn run_service_loop(
         }
     }
 
-    show_osd_notification(ServiceState::Idle, None);
+    show_osd_notification(ServiceState::Idle, None, config.osd_enabled);
     notify_feedback(&service_inner, ServiceState::Idle, None, 0.0, 0);
 
     with_inner(&service_inner, |inner| {
@@ -466,14 +551,7 @@ fn osd_content(
             let preview = transcript
                 .map(str::trim)
                 .filter(|text| !text.is_empty())
-                .map(|text| {
-                    if text.chars().count() > 60 {
-                        let cut: String = text.chars().take(60).collect();
-                        format!("{cut}...")
-                    } else {
-                        text.to_string()
-                    }
-                });
+                .map(|text| truncate_chars(text, 60));
 
             match preview {
                 Some(preview) => ("emblem-default", "3500", "✓ Ditado Colado!", preview),
@@ -488,9 +566,41 @@ fn osd_content(
     }
 }
 
-fn show_osd_notification(state: ServiceState, transcript: Option<&str>) {
+fn show_osd_notification(state: ServiceState, transcript: Option<&str>, osd_enabled: bool) {
+    if !osd_enabled {
+        return;
+    }
+
     let (icon, expire, title, body) = osd_content(state, transcript);
     send_osd(icon, expire, title, &body);
+}
+
+fn friendly_error_message(err: &AppError) -> String {
+    let raw = err.to_string();
+    let friendly = if raw.contains("transcriber returned empty text")
+        || raw.contains("returned empty transcription")
+    {
+        "Whisper retornou texto vazio. Verifique o modelo e a gravação.".to_string()
+    } else if raw.contains("no audio samples captured") {
+        "Nenhum áudio capturado. Verifique o microfone.".to_string()
+    } else if raw.contains("wl-copy") || raw.contains("wl-clipboard") {
+        "Clipboard indisponível (wl-clipboard). Verifique a sessão Wayland.".to_string()
+    } else if raw.contains("whisper binary not found") || raw.contains("whisper model not found") {
+        "Whisper não encontrado. Verifique os caminhos em Configurações.".to_string()
+    } else {
+        raw
+    };
+
+    truncate_chars(&friendly, 140)
+}
+
+fn truncate_chars(text: &str, max: usize) -> String {
+    if text.chars().count() <= max {
+        text.to_string()
+    } else {
+        let cut: String = text.chars().take(max).collect();
+        format!("{cut}...")
+    }
 }
 
 fn send_osd(icon: &str, expire: &str, title: &str, body: &str) {
@@ -550,6 +660,7 @@ fn fallback_config() -> Config {
         start_minimized: false,
         start_with_system: false,
         close_to_tray: true,
+        osd_enabled: true,
     }
 }
 
@@ -595,5 +706,19 @@ mod tests {
         assert_eq!(icon, "emblem-default");
         assert_eq!(expire, "3500");
         assert_eq!(body.chars().count(), 63);
+    }
+
+    #[test]
+    fn test_friendly_error_message_maps_empty_transcript() {
+        let err = AppError::CommandFailed("transcriber returned empty text".into());
+        assert!(friendly_error_message(&err).contains("texto vazio"));
+    }
+
+    #[test]
+    fn test_truncate_chars_limits_length() {
+        let long = "x".repeat(200);
+        let cut = truncate_chars(&long, 140);
+        assert_eq!(cut.chars().count(), 143);
+        assert!(cut.ends_with("..."));
     }
 }

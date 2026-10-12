@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use log::info;
@@ -24,6 +24,8 @@ pub fn transcribe(config: &Config, wav_path: &Path) -> AppResult<String> {
     }
 
     let output_prefix = temp_output_prefix(&config.temp_dir)?;
+    let txt_path = output_prefix.with_extension("txt");
+
     let output = Command::new(&config.whisper_bin)
         .arg("-m")
         .arg(&config.model_path)
@@ -38,6 +40,15 @@ pub fn transcribe(config: &Config, wav_path: &Path) -> AppResult<String> {
         .arg("-np")
         .output()?;
 
+    let result = transcribe_output(&output, &txt_path, config);
+
+    // O txt gerado pelo whisper e temporario; remove mesmo em caso de erro.
+    let _ = fs::remove_file(&txt_path);
+
+    result
+}
+
+fn transcribe_output(output: &Output, txt_path: &Path, config: &Config) -> AppResult<String> {
     if !output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -49,9 +60,8 @@ pub fn transcribe(config: &Config, wav_path: &Path) -> AppResult<String> {
         )));
     }
 
-    let txt_path = output_prefix.with_extension("txt");
     let raw = if txt_path.exists() {
-        fs::read_to_string(&txt_path)?
+        fs::read_to_string(txt_path)?
     } else {
         String::from_utf8_lossy(&output.stdout).to_string()
     };
@@ -94,4 +104,25 @@ fn temp_output_prefix(temp_dir: &Path) -> AppResult<PathBuf> {
         .map_err(|err| AppError::Unsupported(format!("system clock error: {err}")))?
         .as_millis();
     Ok(temp_dir.join(format!("whisper-output-{millis}")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cleanup_transcript_filters_noise_and_trims() {
+        let raw = "[00:00:00.000 --> 00:00:01.000] ola\n\
+                   whisper_init: info\n\
+                   main: processing\n\
+                   system_info: audio\n\
+                   texto final\n";
+        assert_eq!(cleanup_transcript(raw, true), "texto final");
+    }
+
+    #[test]
+    fn test_cleanup_transcript_keeps_multiline() {
+        let raw = "linha 1\nlinha 2\n";
+        assert_eq!(cleanup_transcript(raw, true), "linha 1\nlinha 2");
+    }
 }
