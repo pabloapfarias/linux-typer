@@ -8,7 +8,9 @@ pub fn autostart_desktop_path() -> Option<PathBuf> {
 }
 
 pub fn is_autostart_enabled() -> bool {
-    autostart_desktop_path().map(|p| p.exists()).unwrap_or(false)
+    autostart_desktop_path()
+        .map(|p| p.exists())
+        .unwrap_or(false)
 }
 
 pub fn set_autostart_enabled(enabled: bool) -> AppResult<()> {
@@ -20,8 +22,8 @@ pub fn set_autostart_enabled(enabled: bool) -> AppResult<()> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        let current_exe = std::env::current_exe()
-            .unwrap_or_else(|_| PathBuf::from("linux-voice-typer-desktop"));
+        let current_exe =
+            std::env::current_exe().unwrap_or_else(|_| PathBuf::from("linux-voice-typer-desktop"));
 
         let content = format!(
             "[Desktop Entry]\n\

@@ -161,7 +161,7 @@ fn build_stream<T, E>(
     config: &StreamConfig,
     buffer: Arc<Mutex<SharedBuffer>>,
     latest_level: Arc<AtomicU32>,
-    mut err_fn: E,
+    err_fn: E,
 ) -> AppResult<Stream>
 where
     T: Sample + cpal::SizedSample,
@@ -170,7 +170,7 @@ where
 {
     let channels = config.channels as usize;
     let stream = device.build_input_stream(
-        config.clone(),
+        *config,
         move |data: &[T], _| {
             let mut sum_sq = 0.0f32;
             let mut count = 0usize;
@@ -190,7 +190,7 @@ where
                 latest_level.store((normalized * 1000.0) as u32, Ordering::Relaxed);
             }
         },
-        move |err| err_fn(err),
+        err_fn,
         None,
     )?;
     Ok(stream)

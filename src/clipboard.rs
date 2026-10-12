@@ -1,4 +1,3 @@
-use std::ffi::OsStr;
 use std::io::Write;
 use std::process::{Command, Stdio};
 
@@ -116,9 +115,4 @@ fn shell_escape(value: &str) -> String {
     }
     escaped.push('\'');
     escaped
-}
-
-#[allow(dead_code)]
-fn _as_os_str(value: &str) -> &OsStr {
-    OsStr::new(value)
 }

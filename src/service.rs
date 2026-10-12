@@ -318,13 +318,13 @@ fn run_service_loop(
         let event_opt = listener.recv_timeout(Duration::from_millis(50));
 
         // If recording, tick audio level and elapsed timer every 60ms
-        if let Some(active) = &recorder {
-            if last_tick.elapsed() >= Duration::from_millis(60) {
-                last_tick = Instant::now();
-                let elapsed = record_start.map(|t| t.elapsed().as_secs()).unwrap_or(0);
-                let lvl = active.current_level();
-                notify_feedback(&service_inner, ServiceState::Recording, None, lvl, elapsed);
-            }
+        if let Some(active) = &recorder
+            && last_tick.elapsed() >= Duration::from_millis(60)
+        {
+            last_tick = Instant::now();
+            let elapsed = record_start.map(|t| t.elapsed().as_secs()).unwrap_or(0);
+            let lvl = active.current_level();
+            notify_feedback(&service_inner, ServiceState::Recording, None, lvl, elapsed);
         }
 
         let Some(event) = event_opt else {
@@ -629,11 +629,29 @@ fn paste_mode_label(shortcut: PasteShortcut) -> &'static str {
 }
 
 fn default_microphone_name() -> String {
-    if cpal::default_host().default_input_device().is_some() {
+    const TTL: Duration = Duration::from_secs(10);
+    static CACHE: Mutex<Option<(Instant, String)>> = Mutex::new(None);
+
+    // O status e consultado a cada segundo pela UI; evitar reenumerar o
+    // dispositivo a cada chamada (cache curto para detectar mudancas).
+    if let Ok(guard) = CACHE.lock()
+        && let Some((at, name)) = guard.as_ref()
+        && at.elapsed() < TTL
+    {
+        return name.clone();
+    }
+
+    let name = if cpal::default_host().default_input_device().is_some() {
         "Microfone padrão detectado".to_string()
     } else {
         "Microfone não detectado".to_string()
+    };
+
+    if let Ok(mut guard) = CACHE.lock() {
+        *guard = Some((Instant::now(), name.clone()));
     }
+
+    name
 }
 
 fn fallback_config() -> Config {

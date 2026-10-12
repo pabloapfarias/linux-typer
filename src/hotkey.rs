@@ -315,4 +315,3 @@ mod tests {
         assert!(parse_hotkey("InvalidKey123").is_err());
     }
 }
-

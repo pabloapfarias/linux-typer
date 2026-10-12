@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::IsTerminal;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use dialoguer::Confirm;
 
@@ -346,9 +346,4 @@ fn confirm(args: &SetupArgs, prompt: &str) -> AppResult<bool> {
         .with_prompt(prompt)
         .default(false)
         .interact()?)
-}
-
-#[allow(dead_code)]
-fn _canonical(path: &Path) -> AppResult<PathBuf> {
-    Ok(path.canonicalize()?)
 }

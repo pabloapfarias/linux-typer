@@ -974,6 +974,37 @@ $('refresh-logs').addEventListener('click', async () => {
   showToast('Logs atualizados.');
 });
 
+async function startServiceHandler(button) {
+  if (currentStatus && currentStatus.running) {
+    showToast('O serviço já está rodando.');
+    return;
+  }
+  setBusy(button, true);
+  try {
+    const status = await call('start_service');
+    renderStatus(status);
+    setOutput(status.running ? 'Serviço de ditado iniciado com sucesso.' : 'Aguardando inicialização do serviço.');
+    showToast('Serviço iniciado.');
+  } finally {
+    setBusy(button, false);
+  }
+}
+
+async function stopServiceHandler(button) {
+  if (!currentStatus || !currentStatus.running) {
+    showToast('O serviço já está parado.');
+    return;
+  }
+  setBusy(button, true);
+  try {
+    renderStatus(await call('stop_service'));
+    setOutput('Serviço de ditado pausado com sucesso.');
+    showToast('Serviço pausado.');
+  } finally {
+    setBusy(button, false);
+  }
+}
+
 async function toggleServiceHandler(button) {
   setBusy(button, true);
   try {
@@ -993,8 +1024,8 @@ async function toggleServiceHandler(button) {
 }
 
 $('quick-toggle-service').addEventListener('click', (e) => toggleServiceHandler(e.currentTarget));
-$('start-service').addEventListener('click', (e) => toggleServiceHandler(e.currentTarget));
-$('stop-service').addEventListener('click', (e) => toggleServiceHandler(e.currentTarget));
+$('start-service').addEventListener('click', (e) => startServiceHandler(e.currentTarget));
+$('stop-service').addEventListener('click', (e) => stopServiceHandler(e.currentTarget));
 
 $('restart-service').addEventListener('click', async (event) => {
   const button = event.currentTarget;

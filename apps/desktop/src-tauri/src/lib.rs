@@ -61,7 +61,10 @@ fn get_status(state: State<'_, DesktopState>) -> VoiceTyperStatus {
 }
 
 #[tauri::command]
-async fn start_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<VoiceTyperStatus, String> {
+async fn start_service(
+    state: State<'_, DesktopState>,
+    app: AppHandle,
+) -> Result<VoiceTyperStatus, String> {
     if state.service.is_running() {
         return Ok(state.service.status());
     }
@@ -73,14 +76,20 @@ async fn start_service(state: State<'_, DesktopState>, app: AppHandle) -> Result
 }
 
 #[tauri::command]
-async fn stop_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<VoiceTyperStatus, String> {
+async fn stop_service(
+    state: State<'_, DesktopState>,
+    app: AppHandle,
+) -> Result<VoiceTyperStatus, String> {
     state.service.stop().map_err(to_message)?;
     update_tray_icon(&app, "stopped");
     Ok(state.service.status())
 }
 
 #[tauri::command]
-async fn restart_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<VoiceTyperStatus, String> {
+async fn restart_service(
+    state: State<'_, DesktopState>,
+    app: AppHandle,
+) -> Result<VoiceTyperStatus, String> {
     let config = load_validated_config(&state.paths).map_err(to_message)?;
     state.service.reload_config(config).map_err(to_message)?;
     state.service.restart().map_err(to_message)?;
@@ -104,6 +113,7 @@ async fn save_config(
     let start_with_system = config.start_with_system;
     let config = desktop_to_config(config);
     config.save(state.paths.config_path()).map_err(to_message)?;
+    let validation_warning = config.validate().err().map(to_message);
     let _ = linux_voice_typer::autostart::set_autostart_enabled(start_with_system);
     state.service.reload_config(config).map_err(to_message)?;
     if was_running {
@@ -111,14 +121,15 @@ async fn save_config(
         update_tray_icon(&app, "idle");
     }
     let mut status = state.service.status();
+    if let Some(warning) = validation_warning {
+        status.recent_events.push(format!("Aviso: {warning}"));
+    }
     if was_running {
-        status.recent_events.push(
-            "Configuração salva e serviço reiniciado com o novo atalho.".into(),
-        );
-    } else {
         status
             .recent_events
-            .push("Configuração salva.".into());
+            .push("Configuração salva e serviço reiniciado com o novo atalho.".into());
+    } else {
+        status.recent_events.push("Configuração salva.".into());
     }
     Ok(status)
 }
@@ -214,23 +225,25 @@ pub fn run() {
             let app_handle = app.handle().clone();
             let state = app.state::<DesktopState>();
             let app_h = app_handle.clone();
-            let _ = state.service.set_state_listener(std::sync::Arc::new(move |feedback| {
-                let state_str = match feedback.state {
-                    linux_voice_typer::service::ServiceState::Idle => "idle",
-                    linux_voice_typer::service::ServiceState::Recording => "recording",
-                    linux_voice_typer::service::ServiceState::Transcribing => "transcribing",
-                };
-                update_tray_icon(&app_h, state_str);
-                let _ = app_h.emit(
-                    "dictation-state",
-                    serde_json::json!({
-                        "state": state_str,
-                        "transcript": feedback.transcript,
-                        "level": feedback.level,
-                        "elapsed_secs": feedback.elapsed_secs,
-                    }),
-                );
-            }));
+            let _ = state
+                .service
+                .set_state_listener(std::sync::Arc::new(move |feedback| {
+                    let state_str = match feedback.state {
+                        linux_voice_typer::service::ServiceState::Idle => "idle",
+                        linux_voice_typer::service::ServiceState::Recording => "recording",
+                        linux_voice_typer::service::ServiceState::Transcribing => "transcribing",
+                    };
+                    update_tray_icon(&app_h, state_str);
+                    let _ = app_h.emit(
+                        "dictation-state",
+                        serde_json::json!({
+                            "state": state_str,
+                            "transcript": feedback.transcript,
+                            "level": feedback.level,
+                            "elapsed_secs": feedback.elapsed_secs,
+                        }),
+                    );
+                }));
             install_tray(app.handle())?;
 
             let config = load_config_or_default(&state.paths)
@@ -344,11 +357,19 @@ fn install_tray(app: &AppHandle) -> tauri::Result<()> {
                 let paths = state.paths.clone();
                 let service = state.service.clone();
                 let app_h = app.clone();
-                std::thread::spawn(move || {
-                    if let Ok(config) = load_validated_config(&paths) {
+                std::thread::spawn(move || match load_validated_config(&paths) {
+                    Ok(config) => {
                         let _ = service.reload_config(config);
                         let _ = service.start();
                         update_tray_icon(&app_h, "idle");
+                    }
+                    Err(err) => {
+                        linux_voice_typer::notify::send(
+                            "dialog-error",
+                            "4000",
+                            "⚠️ Não foi possível iniciar",
+                            &to_message(err),
+                        );
                     }
                 });
             }
@@ -372,10 +393,10 @@ fn install_tray(app: &AppHandle) -> tauri::Result<()> {
             "settings" => show_main_window(app),
             "doctor" => {
                 let state = app.state::<DesktopState>();
-                if let Ok(output) = doctor::doctor_report_text(&state.paths) {
-                    if let Ok(mut last) = state.last_doctor.lock() {
-                        *last = Some(output);
-                    }
+                if let Ok(output) = doctor::doctor_report_text(&state.paths)
+                    && let Ok(mut last) = state.last_doctor.lock()
+                {
+                    *last = Some(output);
                 }
                 show_main_window(app);
             }

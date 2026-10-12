@@ -175,7 +175,7 @@ impl Config {
 
         if merged.temp_dir.as_os_str().is_empty()
             || !merged.temp_dir.exists()
-            || merged.temp_dir == PathBuf::from("/tmp/linux-voice-typer")
+            || merged.temp_dir == Path::new("/tmp/linux-voice-typer")
         {
             merged.temp_dir = desired.temp_dir.clone();
             changed = true;
@@ -222,5 +222,72 @@ impl Config {
 
         fs::create_dir_all(&self.temp_dir)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config_for_tests() -> Config {
+        Config {
+            hotkey: "F7".into(),
+            language: "pt".into(),
+            model_path: PathBuf::from("/nonexistent/model.bin"),
+            whisper_bin: PathBuf::from("/nonexistent/whisper-cli"),
+            insert_mode: "clipboard".into(),
+            restore_clipboard: false,
+            auto_paste: true,
+            paste_backend: PasteBackend::Auto,
+            paste_shortcut: PasteShortcut::CtrlV,
+            trim_text: true,
+            temp_dir: PathBuf::from("/tmp/lvt-tests"),
+            auto_start_service: true,
+            start_minimized: false,
+            start_with_system: false,
+            close_to_tray: true,
+            osd_enabled: true,
+        }
+    }
+
+    #[test]
+    fn test_effective_paste_backend_respects_auto_paste() {
+        let mut config = config_for_tests();
+        assert_eq!(config.effective_paste_backend(), PasteBackend::Auto);
+
+        config.auto_paste = false;
+        assert_eq!(config.effective_paste_backend(), PasteBackend::None);
+
+        config.paste_backend = PasteBackend::Uinput;
+        assert_eq!(config.effective_paste_backend(), PasteBackend::Uinput);
+    }
+
+    #[test]
+    fn test_merge_runtime_defaults_fills_missing_values() {
+        let mut current = config_for_tests();
+        current.hotkey = "".into();
+        current.language = "".into();
+        current.insert_mode = "weird".into();
+
+        let mut desired = config_for_tests();
+        desired.hotkey = "F9".into();
+        desired.language = "en".into();
+
+        let (merged, changed) = current.merge_runtime_defaults(&desired);
+        assert!(changed);
+        assert_eq!(merged.hotkey, "F9");
+        assert_eq!(merged.language, "en");
+        assert_eq!(merged.insert_mode, "clipboard");
+    }
+
+    #[test]
+    fn test_merge_runtime_defaults_keeps_non_empty_fields() {
+        let mut desired = config_for_tests();
+        desired.hotkey = "F9".into();
+        desired.language = "en".into();
+
+        let (merged, _) = config_for_tests().merge_runtime_defaults(&desired);
+        assert_eq!(merged.hotkey, "F7");
+        assert_eq!(merged.language, "pt");
     }
 }

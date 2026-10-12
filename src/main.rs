@@ -48,7 +48,10 @@ fn run_command(paths: &AppPaths, args: cli::RunArgs) -> AppResult<()> {
         if should_run_setup()? {
             setup::run_setup(paths, &cli::SetupArgs::default())?;
         } else {
-            return Ok(());
+            return Err(AppError::Unsupported(
+                "ambiente incompleto; rode `linux-voice-typer setup` (ou `cargo run -- setup`)"
+                    .into(),
+            ));
         }
     }
 
