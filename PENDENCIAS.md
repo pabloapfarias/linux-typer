@@ -105,4 +105,4 @@ validação no KDE) estão anotados em `TECHNICAL.md` §Proximos passos.
 | 2026-10-12 | P4-4 — clipboard X11 via `xclip`/`xsel` com detecção automática | `46dabd4` |
 | 2026-10-12 | P4-5 — empacotamento validado (`.deb` e AppImage gerados) | `46dabd4` |
 | 2026-10-12 | P4-6 — serviço `systemd --user` (`service install/uninstall/status`) | `46dabd4` |
-| 2026-10-12 | P4-7 — backend `libei` via portal XDG (sessão reutilizada; validado no GNOME 50 com `ConnectToEIS` v2) | a registrar |
+| 2026-10-12 | P4-7 — backend `libei` via portal XDG (sessão reutilizada; validado no GNOME 50 com `ConnectToEIS` v2) | `d686b73` |
