@@ -10,7 +10,7 @@ use serde::Serialize;
 use crate::audio::Recorder;
 use crate::config::{Config, PasteBackend, PasteShortcut};
 use crate::error::{AppError, AppResult};
-use crate::hotkey::{HotkeyListener, TriggerEvent};
+use crate::hotkey::{HotkeyListener, HotkeyMode, TriggerEvent};
 use crate::process_recording;
 
 const MAX_EVENTS: usize = 80;
@@ -251,9 +251,27 @@ fn run_service_loop(
         }
     };
 
-    with_inner(&service_inner, |inner| {
-        push_event(inner, "Hotkey global ativa");
-    });
+    match listener.mode {
+        HotkeyMode::Global => {
+            with_inner(&service_inner, |inner| {
+                push_event(inner, format!("Hotkey global ativa: {}", config.hotkey));
+            });
+        }
+        HotkeyMode::Terminal => {
+            with_inner(&service_inner, |inner| {
+                push_event(
+                    inner,
+                    "Hotkey global indisponível; modo terminal ativo (sem suporte na GUI)",
+                );
+            });
+            send_osd(
+                "dialog-warning",
+                "5000",
+                "⚠️ Hotkey global indisponível",
+                "Não foi possível registrar o atalho global. Verifique permissões de entrada ou conflito com outro aplicativo.",
+            );
+        }
+    }
 
     let mut recorder: Option<Recorder> = None;
     let mut record_start: Option<Instant> = None;
@@ -296,6 +314,7 @@ fn run_service_loop(
                     }
                     Err(err) => {
                         record_start = None;
+                        show_osd_notification(ServiceState::Idle, None);
                         notify_feedback(&service_inner, ServiceState::Idle, None, 0.0, 0);
                         with_inner(&service_inner, |inner| {
                             push_event(inner, format!("Falha ao gravar: {err}"));
@@ -426,57 +445,58 @@ fn notify_feedback(
     }
 }
 
-fn show_osd_notification(state: ServiceState, transcript: Option<&str>) {
-    let (icon, expire, title, body) = match state {
+fn osd_content(
+    state: ServiceState,
+    transcript: Option<&str>,
+) -> (&'static str, &'static str, &'static str, String) {
+    match state {
         ServiceState::Recording => (
             "audio-input-microphone",
             "0", // NEVER EXPIRE while recording!
             "🎙️ Escutando...",
-            "Fale agora no microfone...",
+            "Fale agora no microfone...".to_string(),
         ),
         ServiceState::Transcribing => (
             "system-run",
             "0", // NEVER EXPIRE while transcribing!
             "⏳ Transcrevendo...",
-            "Processando áudio com Whisper...",
+            "Processando áudio com Whisper...".to_string(),
         ),
         ServiceState::Idle => {
-            if let Some(text) = transcript {
-                let trimmed = text.trim();
-                if trimmed.is_empty() {
-                    return;
-                }
-                let preview = if trimmed.chars().count() > 60 {
-                    let cut: String = trimmed.chars().take(60).collect();
-                    format!("{cut}...")
-                } else {
-                    trimmed.to_string()
-                };
-                (
-                    "emblem-default",
-                    "3500", // 3.5s for done
-                    "✓ Ditado Colado!",
-                    preview.leak() as &str,
-                )
-            } else {
-                return;
+            let preview = transcript
+                .map(str::trim)
+                .filter(|text| !text.is_empty())
+                .map(|text| {
+                    if text.chars().count() > 60 {
+                        let cut: String = text.chars().take(60).collect();
+                        format!("{cut}...")
+                    } else {
+                        text.to_string()
+                    }
+                });
+
+            match preview {
+                Some(preview) => ("emblem-default", "3500", "✓ Ditado Colado!", preview),
+                None => (
+                    "edit-clear",
+                    "1500",
+                    "🎙️ Pronto",
+                    "Pode ditar novamente quando quiser.".to_string(),
+                ),
             }
         }
-    };
+    }
+}
 
+fn show_osd_notification(state: ServiceState, transcript: Option<&str>) {
+    let (icon, expire, title, body) = osd_content(state, transcript);
+    send_osd(icon, expire, title, &body);
+}
+
+fn send_osd(icon: &str, expire: &str, title: &str, body: &str) {
     let _ = std::process::Command::new("notify-send")
         .args([
-            "-r",
-            "4242",
-            "-a",
-            "Linux Voice Typer",
-            "-i",
-            icon,
-            "-e",
-            "-t",
-            expire,
-            title,
-            body,
+            "-r", "4242", "-a", "Linux Voice Typer", "-i", icon, "-e", "-t", expire, title, body,
         ])
         .spawn();
 }
@@ -529,6 +549,7 @@ fn fallback_config() -> Config {
         auto_start_service: true,
         start_minimized: false,
         start_with_system: false,
+        close_to_tray: true,
     }
 }
 
@@ -548,5 +569,31 @@ mod tests {
         assert!(service.is_running());
         assert!(service.stop().is_ok());
         assert!(!service.is_running());
+    }
+
+    #[test]
+    fn test_osd_recording_never_expires() {
+        let (icon, expire, _, _) = osd_content(ServiceState::Recording, None);
+        assert_eq!(icon, "audio-input-microphone");
+        assert_eq!(expire, "0");
+    }
+
+    #[test]
+    fn test_osd_idle_without_transcript_clears_notification() {
+        let (icon, expire, _, _) = osd_content(ServiceState::Idle, None);
+        assert_eq!(icon, "edit-clear");
+        assert_eq!(expire, "1500");
+
+        let (icon, _, _, _) = osd_content(ServiceState::Idle, Some("   "));
+        assert_eq!(icon, "edit-clear");
+    }
+
+    #[test]
+    fn test_osd_done_preview_is_truncated() {
+        let long = "a".repeat(80);
+        let (icon, expire, _, body) = osd_content(ServiceState::Idle, Some(&long));
+        assert_eq!(icon, "emblem-default");
+        assert_eq!(expire, "3500");
+        assert_eq!(body.chars().count(), 63);
     }
 }

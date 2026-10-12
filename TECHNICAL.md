@@ -458,7 +458,10 @@ Sair
 
 Comportamento:
 
-- fechar a janela esconde o app (isso acontece mesmo sem tray icon disponivel)
+- fechar a janela esconde o app quando existe host de tray e `close_to_tray = true` (default)
+- a deteccao do host usa o watcher `org.kde.StatusNotifierWatcher` via D-Bus (`gdbus`)
+- sem host StatusNotifier detectado (ex.: GNOME sem extensao AppIndicator), fechar a janela encerra o app
+- com `close_to_tray = false`, fechar a janela tambem encerra o app
 - o serviço pode continuar rodando pelo tray
 - `Abrir Configurações` mostra a janela novamente
 - `Sair` encerra o app de verdade
@@ -479,12 +482,16 @@ O serviço mantém os últimos eventos em memória. Exemplos:
 
 ```text
 14:06 Serviço iniciado
-14:06 Hotkey global ativa
+14:06 Hotkey global ativa: F7
 14:16 Gravação iniciada
 14:16 Gravação finalizada
 14:16 Transcrição concluída
 14:16 Texto colado com Ctrl+V
 ```
+
+Se o hotkey global não puder ser registrado, o evento correspondente é
+"Hotkey global indisponível; modo terminal ativo (sem suporte na GUI)" e um
+OSD de aviso é exibido.
 
 A tela mostra eventos resumidos. Logs técnicos detalhados continuam mais úteis
 pelo console e pela CLI.
@@ -500,15 +507,17 @@ a notificação anterior:
 | Gravando | `audio-input-microphone` | nunca (`-t 0`) | "🎙️ Escutando..." / "Fale agora no microfone..." |
 | Transcrevendo | `system-run` | nunca (`-t 0`) | "⏳ Transcrevendo..." / "Processando áudio com Whisper..." |
 | Concluído | `emblem-default` | 3,5s | "✓ Ditado Colado!" + preview de ate 60 caracteres |
+| Ocioso (limpeza) | `edit-clear` | 1,5s | "🎙️ Pronto" / "Pode ditar novamente quando quiser." |
+| Aviso | `dialog-warning` | 5s | "⚠️ Hotkey global indisponível" / detalhe do problema |
 
 Detalhes e limitações atuais:
 
 - a CLI pura não envia notificações; o OSD é exclusivo do serviço da UI desktop.
 - se `notify-send` não existir, o erro é ignorado silenciosamente.
 - os nomes de ícone dependem do tema de ícones instalado.
-- estados `Idle` sem transcrição (falha na transcrição, erro ao gravar, parada
-  do serviço) não enviam notificação nova, então um OSD de "Escutando..." ou
-  "Transcrevendo..." com `-t 0` pode permanecer na tela nesses casos.
+- o estado `Idle` sem transcrição (falha na transcrição, erro ao gravar, parada
+  do serviço) envia uma notificação curta de limpeza, evitando que um OSD de
+  "Escutando..." ou "Transcrevendo..." com `-t 0` fique preso na tela.
 
 ### Diagnostico pela interface
 
@@ -640,10 +649,10 @@ gnome-extensions list | grep appindicator
 gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com
 ```
 
-Sem a extensao, o app funciona normalmente pela janela, mas sem tray icon.
-Como o fechamento da janela sempre a esconde, sem tray icon o app pode ficar
-sem forma de reabrir a janela; nesse caso, encerre o processo pelo terminal
-(`pkill linux-voice-typer-desktop`).
+Sem a extensao, o app funciona normalmente pela janela. Como nao existe host
+de tray, o fechamento da janela encerra o app (comportamento seguro) em vez de
+escondê-lo; com a extensao ativa, fechar esconde para a bandeja (enquanto
+`close_to_tray = true`).
 
 ### Erros amigaveis na interface
 
@@ -758,7 +767,6 @@ ydotool key 29:1 47:1 47:0 29:0
 - Nao ha escolha de microfone por CLI ainda.
 - `start_minimized` existe no config.toml e na UI, mas ainda nao e aplicado: a janela abre visivel.
 - O clipboard depende de `wl-clipboard`, entao o app e Wayland-first; em X11 puro a colagem nao funciona.
-- O fechamento da janela sempre esconde o app, mesmo sem tray icon disponivel.
 - Arquivos temporarios (`recording-*.wav`, `whisper-output-*.txt`) nao sao removidos automaticamente.
 
 ## Proximos passos

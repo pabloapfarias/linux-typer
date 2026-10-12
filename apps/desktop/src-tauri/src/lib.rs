@@ -39,6 +39,12 @@ struct DesktopConfig {
     auto_start_service: bool,
     start_minimized: bool,
     start_with_system: bool,
+    #[serde(default = "default_close_to_tray")]
+    close_to_tray: bool,
+}
+
+fn default_close_to_tray() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -240,8 +246,17 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
-                let _ = window.hide();
-                api.prevent_close();
+                let app = window.app_handle();
+                let close_to_tray = app
+                    .try_state::<DesktopState>()
+                    .and_then(|state| load_config_or_default(&state.paths).ok())
+                    .map(|config| config.close_to_tray)
+                    .unwrap_or(true);
+
+                if close_to_tray && tray_host_available(app) {
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -370,6 +385,37 @@ fn show_main_window(app: &AppHandle) {
     }
 }
 
+/// O icone de bandeja so aparece se houver um host StatusNotifier no barramento
+/// (KDE, waybar, extensao AppIndicator no GNOME, etc.). Sem host, esconder a
+/// janela deixaria o app inacessivel.
+fn tray_host_available(app: &AppHandle) -> bool {
+    if app.tray_by_id("main-tray").is_none() {
+        return false;
+    }
+
+    let output = Command::new("gdbus")
+        .args([
+            "call",
+            "--session",
+            "--dest",
+            "org.freedesktop.DBus",
+            "--object-path",
+            "/org/freedesktop/DBus",
+            "--method",
+            "org.freedesktop.DBus.NameHasOwner",
+            "org.kde.StatusNotifierWatcher",
+        ])
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).contains("true")
+        }
+        // Sem gdbus ou erro na consulta: mantem o comportamento atual.
+        _ => true,
+    }
+}
+
 fn set_shortcut_from_tray(
     state: &State<'_, DesktopState>,
     shortcut: PasteShortcut,
@@ -409,6 +455,7 @@ fn config_to_desktop(config: Config) -> DesktopConfig {
         auto_start_service: config.auto_start_service,
         start_minimized: config.start_minimized,
         start_with_system: linux_voice_typer::autostart::is_autostart_enabled(),
+        close_to_tray: config.close_to_tray,
     }
 }
 
@@ -432,6 +479,7 @@ fn desktop_to_config(config: DesktopConfig) -> Config {
         auto_start_service: config.auto_start_service,
         start_minimized: config.start_minimized,
         start_with_system: config.start_with_system,
+        close_to_tray: config.close_to_tray,
     }
 }
 

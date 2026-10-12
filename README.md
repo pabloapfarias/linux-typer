@@ -148,6 +148,7 @@ temp_dir = "/home/USER/.local/share/linux-voice-typer/temp"
 auto_start_service = true     # inicia o servico ao abrir o app
 start_minimized = false       # reservado (ainda nao aplicado)
 start_with_system = true      # entrada em ~/.config/autostart
+close_to_tray = true          # fechar a janela esconde para a bandeja (se houver tray)
 ```
 
 ---
@@ -171,6 +172,8 @@ O diagnóstico verifica automaticamente:
 
 Consulte o documento técnico detalhado para mais informações:
 📄 [**TECHNICAL.md**](TECHNICAL.md)
+
+📌 [**PENDENCIAS.md**](PENDENCIAS.md) — bugs e melhorias pendentes, organizados por prioridade.
 
 ---
 

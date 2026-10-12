@@ -140,7 +140,7 @@ app.innerHTML = `
         <div class="hint-banner">
           <span>💡</span>
           <div>
-            <strong>Dica de uso:</strong> Ao fechar esta janela, o aplicativo continua operando em segundo plano na barra superior do sistema (System Tray). Use a hotkey global a qualquer momento para ditar.
+            <strong>Dica de uso:</strong> Ao fechar esta janela, o aplicativo continua em segundo plano na bandeja do sistema (System Tray) quando ela está disponível no seu ambiente. Use a hotkey global a qualquer momento para ditar.
           </div>
         </div>
       </section>
@@ -270,6 +270,14 @@ app.innerHTML = `
               <div>
                 <span class="check-label">Iniciar Minimizado na Bandeja</span>
                 <span class="check-sub">Oculta a janela principal e mantém o app direto na bandeja superior ao iniciar.</span>
+              </div>
+            </label>
+
+            <label class="checkbox-card">
+              <input id="cfg-close-to-tray" type="checkbox" />
+              <div>
+                <span class="check-label">Fechar para a Bandeja</span>
+                <span class="check-sub">Ao fechar a janela, mantém o app rodando no System Tray. Desative para que o fechamento encerre o aplicativo (útil no GNOME sem extensão AppIndicator).</span>
               </div>
             </label>
           </div>
@@ -853,6 +861,7 @@ function renderConfig(config) {
   $('cfg-restore').checked = Boolean(config.restore_clipboard);
   $('cfg-start-minimized').checked = Boolean(config.start_minimized);
   $('cfg-start-system').checked = Boolean(config.start_with_system);
+  $('cfg-close-to-tray').checked = config.close_to_tray !== false;
 }
 
 function collectConfig() {
@@ -872,6 +881,7 @@ function collectConfig() {
     auto_start_service: $('cfg-auto-start').checked,
     start_minimized: $('cfg-start-minimized').checked,
     start_with_system: $('cfg-start-system').checked,
+    close_to_tray: $('cfg-close-to-tray').checked,
   };
 }
 

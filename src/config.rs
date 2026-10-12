@@ -78,6 +78,8 @@ pub struct Config {
     pub start_minimized: bool,
     #[serde(default)]
     pub start_with_system: bool,
+    #[serde(default = "default_true")]
+    pub close_to_tray: bool,
 }
 
 impl Config {
@@ -123,6 +125,7 @@ impl Config {
             auto_start_service: true,
             start_minimized: false,
             start_with_system: false,
+            close_to_tray: true,
         }
     }
 

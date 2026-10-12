@@ -40,3 +40,9 @@ start_minimized = false
 
 # start_with_system: cria/remove entrada de autostart em ~/.config/autostart.
 start_with_system = false
+
+# close_to_tray: ao fechar a janela, esconde para a bandeja (se houver tray).
+# false: fechar a janela encerra o aplicativo.
+# Sem host StatusNotifier detectado (ex.: GNOME sem extensao AppIndicator),
+# fechar a janela encerra o app mesmo com close_to_tray = true.
+close_to_tray = true
