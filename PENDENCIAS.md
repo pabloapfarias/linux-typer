@@ -65,9 +65,11 @@ ver §Concluídos.
 
 ## P4 — Backlog de features
 
-Nenhum item aberto. O P4-7 (libei/portal) foi concluído em 2026-10-12 — ver
-§Concluídos. Refinamentos futuros (persistência da sessão entre reinícios e
-validação no KDE) estão anotados em `TECHNICAL.md` §Proximos passos.
+Nenhum item aberto. O P4-7 (libei/portal) foi implementado e validado
+tecnicamente na branch `p4-7-libei`, mas o dialogo de consentimento do GNOME
+("Area de trabalho remota / Permitir interacao remota") e inadequado para um
+app de ditado e nao pode ser personalizado — decisao de merge para a `main`
+pendente (opcoes: manter so como configuracao avancada ou nao integrar).
 
 ---
 

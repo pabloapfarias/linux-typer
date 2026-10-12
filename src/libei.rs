@@ -8,6 +8,14 @@
 //!
 //! A sessao do portal e criada uma unica vez por processo (o dialogo de
 //! consentimento aparece so na primeira ditada) e reutilizada depois.
+//!
+//! Notas de protocolo (importantes):
+//! - um dispositivo novo nasce no estado `paused`; so e permitido chamar
+//!   `start_emulating` depois do evento `resumed` (caso contrario o compositor
+//!   pode descartar os eventos silenciosamente);
+//! - `frame` fecha um grupo logico de eventos: pressionar e soltar a mesma
+//!   tecla na mesma frame e um noop; por isso cada transicao vai em sua
+//!   propria frame.
 
 use std::collections::HashMap;
 use std::io;
@@ -34,7 +42,7 @@ const KEY_LEFTCTRL: u32 = 29;
 const KEY_LEFTSHIFT: u32 = 42;
 const KEY_V: u32 = 47;
 
-/// Tempo maximo para o compositor entregar o dispositivo de teclado.
+/// Tempo maximo para o compositor liberar o teclado (evento `resumed`).
 const DEVICE_TIMEOUT: Duration = Duration::from_secs(10);
 
 struct LibeiSession {
@@ -43,6 +51,7 @@ struct LibeiSession {
     keyboard: ei::Keyboard,
     serial: u32,
     sequence: u32,
+    emulating: bool,
     started: Instant,
 }
 
@@ -58,7 +67,7 @@ pub fn send_paste_shortcut(shortcut: PasteShortcut) -> AppResult<()> {
         *guard = Some(create_session()?);
     }
 
-    let session = guard.as_ref().expect("session created above");
+    let session = guard.as_mut().expect("session created above");
     if let Err(err) = session.send(shortcut) {
         // Sessao invalida (portal revogado, compositor desistiu, etc.):
         // sera recriada na proxima tentativa.
@@ -83,14 +92,14 @@ fn create_session() -> AppResult<LibeiSession> {
     .map_err(|err| AppError::Unsupported(format!("libei handshake failed: {err}")))?;
 
     info!("libei handshake completed (serial {})", response.serial);
-    let (device, keyboard, serial) = discover_keyboard(&context, response.serial)?;
+    let (device, keyboard, serial) = discover_keyboard(&context)?;
 
-    // A partir daqui a sessao emula input continuamente; cada ditada envia
-    // os eventos de tecla em um frame proprio.
-    device.start_emulating(0, serial);
+    // O dispositivo ja veio `resumed`: agora e valido iniciar a emulacao.
+    device.start_emulating(serial, 0);
     context
         .flush()
         .map_err(|err| AppError::Unsupported(format!("libei flush failed: {err}")))?;
+    info!("libei keyboard device ready (serial {serial})");
 
     Ok(LibeiSession {
         context,
@@ -98,6 +107,7 @@ fn create_session() -> AppResult<LibeiSession> {
         keyboard,
         serial,
         sequence: 1,
+        emulating: true,
         started: Instant::now(),
     })
 }
@@ -139,20 +149,23 @@ async fn open_eis_stream() -> AppResult<UnixStream> {
     Ok(UnixStream::from(fd))
 }
 
-/// Acompanha os eventos ate o compositor disponibilizar o teclado.
-fn discover_keyboard(
-    context: &ei::Context,
-    initial_serial: u32,
-) -> AppResult<(ei::Device, ei::Keyboard, u32)> {
+#[derive(Default)]
+struct DeviceState {
+    keyboard: Option<ei::Keyboard>,
+    resumed: Option<u32>,
+    done: bool,
+}
+
+/// Acompanha os eventos ate o compositor liberar o teclado (evento `resumed`).
+fn discover_keyboard(context: &ei::Context) -> AppResult<(ei::Device, ei::Keyboard, u32)> {
     let mut seats: HashMap<ei::Seat, HashMap<String, u64>> = HashMap::new();
-    let mut devices: HashMap<ei::Device, ei::Keyboard> = HashMap::new();
-    let mut last_serial = initial_serial;
+    let mut devices: HashMap<ei::Device, DeviceState> = HashMap::new();
     let deadline = Instant::now() + DEVICE_TIMEOUT;
 
     loop {
         if Instant::now() > deadline {
             return Err(AppError::Unsupported(
-                "timed out waiting for the libei keyboard device".into(),
+                "timed out waiting for the libei keyboard device to be resumed".into(),
             ));
         }
 
@@ -200,34 +213,34 @@ fn discover_keyboard(
                             seat.bind(*mask);
                         }
                     }
-                    ei::seat::Event::Device { .. } => {
-                        // O dispositivo de teclado chega logo depois, via
-                        // `ei_device.interface`.
+                    ei::seat::Event::Device { device } => {
+                        devices.entry(device).or_default();
                     }
                     ei::seat::Event::Destroyed { .. } => {
                         seats.remove(&seat);
                     }
                     _ => {}
                 },
-                ei::Event::Device(device, request) => match request {
-                    ei::device::Event::Interface { object } => {
-                        if let Some(keyboard) = object.downcast::<ei::Keyboard>() {
-                            devices.insert(device, keyboard);
+                ei::Event::Device(device, request) => {
+                    let state = devices.entry(device.clone()).or_default();
+                    match request {
+                        ei::device::Event::Interface { object } => {
+                            if let Some(keyboard) = object.downcast::<ei::Keyboard>() {
+                                state.keyboard = Some(keyboard);
+                            }
                         }
-                    }
-                    ei::device::Event::Done => {
-                        if let Some(keyboard) = devices.remove(&device) {
-                            return Ok((device, keyboard, last_serial));
+                        ei::device::Event::Done => {
+                            state.done = true;
                         }
+                        ei::device::Event::Resumed { serial } => {
+                            state.resumed = Some(serial);
+                        }
+                        ei::device::Event::Destroyed { .. } => {
+                            devices.remove(&device);
+                        }
+                        _ => {}
                     }
-                    ei::device::Event::Resumed { serial } => {
-                        last_serial = serial;
-                    }
-                    ei::device::Event::Destroyed { .. } => {
-                        devices.remove(&device);
-                    }
-                    _ => {}
-                },
+                }
                 ei::Event::Keyboard(_keyboard, _event) => {
                     // O keymap do compositor nao e necessario: usamos
                     // keycodes evdev fixos.
@@ -236,6 +249,14 @@ fn discover_keyboard(
                     // Handshake ja concluido por `ei_handshake_blocking`.
                 }
                 _ => {}
+            }
+
+            if let Some((device, state)) = devices.iter().find(|(_, state)| {
+                state.done && state.keyboard.is_some() && state.resumed.is_some()
+            }) {
+                let keyboard = state.keyboard.clone().expect("checked above");
+                let serial = state.resumed.expect("checked above");
+                return Ok((device.clone(), keyboard, serial));
             }
         }
 
@@ -246,36 +267,43 @@ fn discover_keyboard(
 }
 
 impl LibeiSession {
-    fn send(&self, shortcut: PasteShortcut) -> AppResult<()> {
+    fn send(&mut self, shortcut: PasteShortcut) -> AppResult<()> {
         self.pump();
+        self.wait_resumed()?;
 
-        self.keyboard
-            .key(KEY_LEFTCTRL, ei::keyboard::KeyState::Press);
+        self.key(KEY_LEFTCTRL, true);
         if shortcut == PasteShortcut::CtrlShiftV {
-            self.keyboard
-                .key(KEY_LEFTSHIFT, ei::keyboard::KeyState::Press);
+            self.key(KEY_LEFTSHIFT, true);
         }
-
-        self.keyboard.key(KEY_V, ei::keyboard::KeyState::Press);
-        self.keyboard.key(KEY_V, ei::keyboard::KeyState::Released);
-
+        self.key(KEY_V, true);
+        self.key(KEY_V, false);
         if shortcut == PasteShortcut::CtrlShiftV {
-            self.keyboard
-                .key(KEY_LEFTSHIFT, ei::keyboard::KeyState::Released);
+            self.key(KEY_LEFTSHIFT, false);
         }
-        self.keyboard
-            .key(KEY_LEFTCTRL, ei::keyboard::KeyState::Released);
+        self.key(KEY_LEFTCTRL, false);
 
-        self.device
-            .frame(self.serial, self.started.elapsed().as_micros() as u64);
         self.context
             .flush()
             .map_err(|err| AppError::Unsupported(format!("libei flush failed: {err}")))?;
         Ok(())
     }
 
-    /// Processa eventos pendentes (pings, resumo do dispositivo, etc.).
-    fn pump(&self) {
+    /// Cada transicao de tecla vai em sua propria frame (press+release na
+    /// mesma frame seria um noop).
+    fn key(&self, code: u32, pressed: bool) {
+        let state = if pressed {
+            ei::keyboard::KeyState::Press
+        } else {
+            ei::keyboard::KeyState::Released
+        };
+
+        self.keyboard.key(code, state);
+        self.device
+            .frame(self.serial, self.started.elapsed().as_micros() as u64);
+    }
+
+    /// Processa eventos pendentes (pings, suspensao/retomada do dispositivo).
+    fn pump(&mut self) {
         if context_read(&self.context).is_err() {
             return;
         }
@@ -285,19 +313,49 @@ impl LibeiSession {
                 PendingRequestResult::Request(event) => event,
                 _ => continue,
             };
+
             match event {
                 ei::Event::Connection(_connection, ei::connection::Event::Ping { ping }) => {
                     ping.done(0);
                 }
-                ei::Event::Device(_device, ei::device::Event::Resumed { serial }) => {
-                    // Dispositivo voltou: reemula com a proxima sequencia.
-                    self.device.start_emulating(self.sequence, serial);
+                ei::Event::Device(device, ei::device::Event::Resumed { serial })
+                    if device == self.device =>
+                {
+                    // Dispositivo liberado: reemula com a proxima sequencia.
+                    self.serial = serial;
+                    self.device.start_emulating(self.serial, self.sequence);
+                    self.sequence = self.sequence.wrapping_add(1);
+                    self.emulating = true;
+                }
+                ei::Event::Device(device, ei::device::Event::Paused { .. })
+                    if device == self.device =>
+                {
+                    self.emulating = false;
                 }
                 _ => {}
             }
         }
 
         let _ = self.context.flush();
+    }
+
+    fn wait_resumed(&mut self) -> AppResult<()> {
+        if self.emulating {
+            return Ok(());
+        }
+
+        let deadline = Instant::now() + Duration::from_millis(1500);
+        while Instant::now() < deadline {
+            wait_readable(self.context.as_raw_fd(), 50)?;
+            self.pump();
+            if self.emulating {
+                return Ok(());
+            }
+        }
+
+        Err(AppError::Unsupported(
+            "libei keyboard device is paused by the compositor".into(),
+        ))
     }
 }
 

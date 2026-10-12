@@ -472,7 +472,8 @@ uinput/ydotool, nao exige `/dev/uinput` nem o grupo `input`, funcionando tambem
 em ambiente sandbox (Flatpak).
 
 - nao faz parte do modo `auto`: o dialogo so aparece se o backend for escolhido;
-- validado no GNOME 50 + `xdg-desktop-portal-gnome` (`ConnectToEIS` v2);
+- validado no GNOME 50 + `xdg-desktop-portal-gnome` (`ConnectToEIS` v2): handshake, evento `resumed` e envio de Ctrl+V confirmados;
+- o dialogo de consentimento do GNOME aparece como **"Area de trabalho remota / Permitir interacao remota"** e nao pode ser personalizado pelo app; isso pode assustar usuarios de ditado, por isso o backend e experimental e nao e o padrao;
 - a sessao e por processo: encerrar o app exige novo consentimento;
 - requer um portal XDG ativo (o `doctor` reporta `XDG portal available`).
 
