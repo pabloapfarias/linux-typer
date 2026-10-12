@@ -113,7 +113,7 @@ concluídos em 2026-10-12 — ver §Concluídos.
 | 2026-10-12 | P1-3 — limpeza de WAV/TXT temporários após cada ditada | `7683a43` |
 | 2026-10-12 | P2-1 — OSD de erro com mensagem amigável | `7683a43` |
 | 2026-10-12 | P2-2 — OSD de ciclo de vida + campo `osd_enabled` (parte do P2-3) | `7683a43` |
-| 2026-10-12 | P1-2 — `start_minimized` implementado (janela oculta com tray + fallback seguro) | a registrar |
-| 2026-10-12 | P1-5 — salvar pela UI preserva `auto_paste`/`trim_text`/`insert_mode` | a registrar |
-| 2026-10-12 | P2-3 — disponibilidade do `notify-send` verificada (ícones seguem o spec freedesktop) | a registrar |
-| 2026-10-12 | P2-4 — OSD extraído para `src/notify.rs` | a registrar |
+| 2026-10-12 | P1-2 — `start_minimized` implementado (janela oculta com tray + fallback seguro) | `6d14d0f` |
+| 2026-10-12 | P1-5 — salvar pela UI preserva `auto_paste`/`trim_text`/`insert_mode` | `6d14d0f` |
+| 2026-10-12 | P2-3 — disponibilidade do `notify-send` verificada (ícones seguem o spec freedesktop) | `6d14d0f` |
+| 2026-10-12 | P2-4 — OSD extraído para `src/notify.rs` | `6d14d0f` |
