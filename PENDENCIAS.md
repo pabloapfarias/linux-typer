@@ -9,6 +9,9 @@ prioridade. Base: análise do código em **2026-10-12** (commit `54c9734`).
   config.example) deve ser atualizada no mesmo commit da mudança de código.
 - Ao concluir um item, mova-o para a seção **Concluídos** com data e commit.
 - IDs são estáveis e podem ser citados em commits: `fix: Fechar janela sem tray (P0-2)`.
+- **Sem CI externo:** as verificações (`cargo fmt --check`, `cargo test`,
+  `cargo clippy --all-targets -- -D warnings`) são rodadas localmente —
+  use `./execute check` para executar as três de uma vez.
 
 ## Legenda
 
@@ -92,7 +95,7 @@ ver §Concluídos.
 | 2026-10-12 | P3-3 — tray "Iniciar" reporta erro de validação via OSD | `665019b` |
 | 2026-10-12 | P3-4 — `save_config` emite aviso quando a config salva não valida | `665019b` |
 | 2026-10-12 | P3-5 — CLI `run` retorna erro com ambiente incompleto | `665019b` |
-| 2026-10-12 | P3-6 — testes de config + workflow de CI (fmt/test/clippy) | `665019b` |
+| 2026-10-12 | P3-6 — testes de config adicionados; verificação local via `./execute check` (CI externo descartado) | `665019b` |
 | 2026-10-12 | P3-7 — script `execute` versionado e documentado no README | `44849cd` |
 | 2026-10-12 | P3-8 — placeholders `bin/` e `models/` removidos | `665019b` |
 | 2026-10-12 | P3-9 — detecção de microfone com cache de 10s | `665019b` |

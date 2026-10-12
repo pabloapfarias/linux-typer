@@ -142,6 +142,7 @@ O script `./execute` na raiz resume os comandos mais usados:
 ./execute doctor      # diagnóstico do sistema
 ./execute setup       # baixa e compila whisper.cpp + modelo
 ./execute build       # binário release
+./execute check       # verificação local: fmt + testes + clippy
 ```
 
 ### Serviço `systemd --user`

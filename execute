@@ -29,6 +29,7 @@ Comandos disponíveis:
   doctor         Executa o diagnóstico completo do sistema e dependências
   setup          Baixa e compila o Whisper.cpp e modelo padrão
   build          Compila o binário otimizado de produção (--release)
+  check          Roda verificação local: fmt, testes e clippy
   help           Exibe esta mensagem de ajuda
 
 Exemplos:
@@ -72,6 +73,14 @@ case "$COMMAND" in
     cd "$PROJECT_ROOT"
     cargo build --release
     echo "✓ Concluído: $PROJECT_ROOT/target/release/linux-voice-typer"
+    ;;
+  check)
+    echo "🔍 Rodando verificações locais (fmt + testes + clippy)..."
+    cd "$PROJECT_ROOT"
+    cargo fmt --check
+    cargo test
+    cargo clippy --all-targets -- -D warnings
+    echo "✓ Verificações concluídas sem erros."
     ;;
   help|-h|--help)
     show_help
