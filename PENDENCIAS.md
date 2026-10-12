@@ -26,8 +26,8 @@ prioridade. Base: análise do código em **2026-10-12** (commit `54c9734`).
 |---|---|---|
 | P0 | Bugs críticos de uso diário | 0 |
 | P1 | Correções importantes | 0 |
-| P2 | Notificações (evolução) | 1 |
-| P3 | Qualidade e infraestrutura | 10 |
+| P2 | Notificações (evolução) | 0 |
+| P3 | Qualidade e infraestrutura | 0 |
 | P4 | Backlog de features | 7 |
 
 ---
@@ -48,44 +48,15 @@ concluídos em 2026-10-12 — ver §Concluídos.
 
 ## P2 — Notificações (evolução)
 
-### P2-5 · Revisar `-e` (transient) + `-t 0` por daemon
-- **Status parcial (GNOME):** validado com `notify-send 0.8.8` — `-e`/`-t 0` funcionam, mas o ID fixo **não** substituía a notificação anterior; corrigido em `src/notify.rs` (guarda o ID do daemon via `-p` e usa `-r <id>`).
-- **Falta:** validar no KDE/Plasma e documentar diferenças, se houver.
+Nenhum item aberto. O P2-5 (flags `-e`/`-t 0` e substituição de OSD) foi
+concluído em 2026-10-12 com validação no GNOME — ver §Concluídos.
 
 ---
 
 ## P3 — Qualidade e infraestrutura
 
-### P3-1 · Zerar warnings do clippy
-- **Onde:** `src/audio.rs:173` (clone em `Copy`), `src/audio.rs:193` (closure redundante), `src/config.rs:178` (`cmp_owned`), `src/service.rs:321` (`if` colapsável) e `apps/desktop/src-tauri/src/lib.rs:375` (`if` colapsável no handler do tray)
-
-### P3-2 · Remover código morto
-- **Onde:** `clipboard::_as_os_str` (`src/clipboard.rs:121-124`), `setup::_canonical` (`src/setup.rs:351-354`)
-
-### P3-3 · Feedback ao iniciar pelo tray
-- **Onde:** `apps/desktop/src-tauri/src/lib.rs:342-354` — erro de config inválida é ignorado silenciosamente no menu "Iniciar"; publicar evento/toast ou OSD.
-
-### P3-4 · Validação no `save_config`
-- **Onde:** `apps/desktop/src-tauri/src/lib.rs:98-124` — hoje grava sem validar caminhos; o erro só aparece na primeira ditada. Avaliar validar antes de gravar ou avisar sem bloquear.
-
-### P3-5 · Exit code do CLI em ambiente incompleto
-- **Onde:** `src/main.rs:44-53` — `run` retorna sucesso (exit 0) mesmo com ambiente incompleto; usar exit code de erro para automação.
-
-### P3-6 · Testes e CI
-- **Estado atual:** 2 testes (`hotkey`, `service`) com `sleep` (flaky potencial); sem CI.
-- **Objetivo:** testes unitários para `config`, `transcriber::cleanup_transcript`, mapeamento do `injector` e OSD/estado; workflow GitHub Actions com `cargo test`, `clippy` e `fmt`.
-
-### P3-7 · Decidir destino do script `execute`
-- **Situação:** está na raiz, fora do git (`?? execute`). Versionar e documentar no README/TECHNICAL **ou** remover do diretório de trabalho.
-
-### P3-8 · Placeholders `bin/` e `models/`
-- **Situação:** contêm apenas `.gitkeep` e não são usados pelo código (tudo vai para `~/.local/share/linux-voice-typer/`). Remover ou explicar a finalidade.
-
-### P3-9 · Polling de status chama `cpal` a cada segundo
-- **Onde:** `VoiceTyperService::status()` → `default_microphone_name()` (`src/service.rs:631-637`), chamado pela UI a cada 1s (`apps/desktop/src/main.js:960`). Cachear o nome/estado do microfone.
-
-### P3-10 · Revisar botões Iniciar/Pausar duplicados
-- **Onde:** `apps/desktop/src/main.js:977-997` — "Iniciar" e "Pausar" usam o mesmo handler de alternância; revisar rótulos/estado para evitar ação invertida.
+Nenhum item aberto. Os itens P3-1 a P3-10 foram concluídos em 2026-10-12 —
+ver §Concluídos.
 
 ---
 
@@ -118,3 +89,14 @@ concluídos em 2026-10-12 — ver §Concluídos.
 | 2026-10-12 | P1-5 — salvar pela UI preserva `auto_paste`/`trim_text`/`insert_mode` | `6d14d0f` |
 | 2026-10-12 | P2-3 — disponibilidade do `notify-send` verificada (ícones seguem o spec freedesktop) | `6d14d0f` |
 | 2026-10-12 | P2-4 — OSD extraído para `src/notify.rs` | `6d14d0f` |
+| 2026-10-12 | P2-5 — flags `-e`/`-t 0` validadas no GNOME; substituição de OSD corrigida (ID real do daemon) | `426fb8c` |
+| 2026-10-12 | P3-1 — clippy zerado (core e desktop compilam com `-D warnings`) | `665019b` |
+| 2026-10-12 | P3-2 — código morto removido | `665019b` |
+| 2026-10-12 | P3-3 — tray "Iniciar" reporta erro de validação via OSD | `665019b` |
+| 2026-10-12 | P3-4 — `save_config` emite aviso quando a config salva não valida | `665019b` |
+| 2026-10-12 | P3-5 — CLI `run` retorna erro com ambiente incompleto | `665019b` |
+| 2026-10-12 | P3-6 — testes de config + workflow de CI (fmt/test/clippy) | `665019b` |
+| 2026-10-12 | P3-7 — script `execute` versionado e documentado no README | `44849cd` |
+| 2026-10-12 | P3-8 — placeholders `bin/` e `models/` removidos | `665019b` |
+| 2026-10-12 | P3-9 — detecção de microfone com cache de 10s | `665019b` |
+| 2026-10-12 | P3-10 — botões Iniciar/Pausar com ações dedicadas | `665019b` |
