@@ -145,7 +145,7 @@ concluídos em 2026-10-12 — ver §Concluídos.
 | Data | Item | Commit |
 |---|---|---|
 | 2026-10-12 | Conciliação de README, TECHNICAL e config.example com o comportamento do código | `54c9734` |
-| 2026-10-12 | P0-1 — OSD preso em erro/parada (notificação de limpeza em `Idle`) | a registrar |
-| 2026-10-12 | P0-2 — fechar janela sem tray (`close_to_tray` + detecção de host StatusNotifier) | a registrar |
-| 2026-10-12 | P0-3 — aviso de hotkey global indisponível (evento + OSD) | a registrar |
-| 2026-10-12 | P1-4 — memory leak do preview no OSD de conclusão (corrigido junto com P0-1) | a registrar |
+| 2026-10-12 | P0-1 — OSD preso em erro/parada (notificação de limpeza em `Idle`) | `cb68d7d` |
+| 2026-10-12 | P0-2 — fechar janela sem tray (`close_to_tray` + detecção de host StatusNotifier) | `cb68d7d` |
+| 2026-10-12 | P0-3 — aviso de hotkey global indisponível (evento + OSD) | `cb68d7d` |
+| 2026-10-12 | P1-4 — memory leak do preview no OSD de conclusão (corrigido junto com P0-1) | `cb68d7d` |
