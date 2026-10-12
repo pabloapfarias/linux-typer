@@ -227,10 +227,10 @@ app.innerHTML = `
               <option value="auto">auto (Detecção automática)</option>
               <option value="ydotool">ydotool</option>
               <option value="wtype">wtype (Wayland wlroots)</option>
-              <option value="libei">libei (Portal XDG - Experimental)</option>
+              <option value="libei">libei (Portal XDG - pede autorização do sistema)</option>
               <option value="none">none (Apenas copiar para o clipboard)</option>
             </select>
-            <span class="field-hint">Método utilizado para simular o atalho de colar.</span>
+            <span class="field-hint">Método utilizado para simular o atalho de colar. O libei pede autorização de "Área de trabalho remota" do sistema — o <code>auto</code>/<code>uinput</code> não pedem nada.</span>
           </div>
 
           <!-- Caminhos de Modelo e Executável -->

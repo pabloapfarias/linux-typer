@@ -65,11 +65,13 @@ ver §Concluídos.
 
 ## P4 — Backlog de features
 
-Nenhum item aberto. O P4-7 (libei/portal) foi implementado e validado
-tecnicamente na branch `p4-7-libei`, mas o dialogo de consentimento do GNOME
-("Area de trabalho remota / Permitir interacao remota") e inadequado para um
-app de ditado e nao pode ser personalizado — decisao de merge para a `main`
-pendente (opcoes: manter so como configuracao avancada ou nao integrar).
+Nenhum item aberto. O P4-7 (libei/portal) foi implementado, validado no GNOME 50
+e integrado à `main` como backend **opt-in**: o padrao permanece `auto`
+(wtype -> ydotool -> uinput) e o libei so e usado quando escolhido
+(`paste_backend = "libei"`), pois o dialogo de consentimento do sistema
+("Area de trabalho remota / Permitir interacao remota") nao pode ser
+personalizado. Refinamentos futuros (persistencia da sessao entre reinicios e
+validacao no KDE) estao em `TECHNICAL.md` §Proximos passos.
 
 ---
 
