@@ -97,9 +97,9 @@ ver §Concluídos.
 | 2026-10-12 | P3-8 — placeholders `bin/` e `models/` removidos | `665019b` |
 | 2026-10-12 | P3-9 — detecção de microfone com cache de 10s | `665019b` |
 | 2026-10-12 | P3-10 — botões Iniciar/Pausar com ações dedicadas | `665019b` |
-| 2026-10-12 | P4-1 — histórico de transcrições (aba na UI + `history.jsonl` local) | a registrar |
-| 2026-10-12 | P4-2 — escolha de microfone (`input_device` + lista via `cpal`) | a registrar |
-| 2026-10-12 | P4-3 — seletores nativos de arquivo (`tauri-plugin-dialog`) | a registrar |
-| 2026-10-12 | P4-4 — clipboard X11 via `xclip`/`xsel` com detecção automática | a registrar |
-| 2026-10-12 | P4-5 — empacotamento validado (`.deb` e AppImage gerados) | a registrar |
-| 2026-10-12 | P4-6 — serviço `systemd --user` (`service install/uninstall/status`) | a registrar |
+| 2026-10-12 | P4-1 — histórico de transcrições (aba na UI + `history.jsonl` local) | `46dabd4` |
+| 2026-10-12 | P4-2 — escolha de microfone (`input_device` + lista via `cpal`) | `46dabd4` |
+| 2026-10-12 | P4-3 — seletores nativos de arquivo (`tauri-plugin-dialog`) | `46dabd4` |
+| 2026-10-12 | P4-4 — clipboard X11 via `xclip`/`xsel` com detecção automática | `46dabd4` |
+| 2026-10-12 | P4-5 — empacotamento validado (`.deb` e AppImage gerados) | `46dabd4` |
+| 2026-10-12 | P4-6 — serviço `systemd --user` (`service install/uninstall/status`) | `46dabd4` |
