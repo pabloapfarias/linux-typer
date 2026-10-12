@@ -22,6 +22,7 @@ prioridade. Base: análise do código em **2026-10-12** (commit `54c9734`).
 | **P2** | Evolução de notificações (OSD) |
 | **P3** | Qualidade, higiene e infraestrutura |
 | **P4** | Backlog de features |
+| **P5** | Melhorias futuras (sem compromisso de prazo) |
 
 ## Resumo
 
@@ -32,6 +33,7 @@ prioridade. Base: análise do código em **2026-10-12** (commit `54c9734`).
 | P2 | Notificações (evolução) | 0 |
 | P3 | Qualidade e infraestrutura | 0 |
 | P4 | Backlog de features | 0 |
+| P5 | Melhorias futuras | 3 |
 
 ---
 
@@ -70,8 +72,23 @@ e integrado à `main` como backend **opt-in**: o padrao permanece `auto`
 (wtype -> ydotool -> uinput) e o libei so e usado quando escolhido
 (`paste_backend = "libei"`), pois o dialogo de consentimento do sistema
 ("Area de trabalho remota / Permitir interacao remota") nao pode ser
-personalizado. Refinamentos futuros (persistencia da sessao entre reinicios e
-validacao no KDE) estao em `TECHNICAL.md` §Proximos passos.
+personalizado. Refinamentos futuros estao registrados em §P5.
+
+---
+
+## P5 — Melhorias futuras
+
+### P5-1 · Persistência da sessão libei + validação no KDE/Plasma
+- **Onde:** `src/libei.rs` (sessão por processo; `PersistMode::DoNot`)
+- **Objetivo:** guardar o *restore token* do portal (`PersistMode::Application`) para o diálogo "Área de trabalho remota" aparecer apenas na primeira autorização; validar libei e OSD também no KDE/Plasma, documentando diferenças.
+
+### P5-2 · Robustez do hotkey global e diferenças GNOME/KDE
+- **Onde:** `src/hotkey.rs` (keytap/evdev), `src/injector.rs`
+- **Objetivo:** reduzir a dependência de permissões em `/dev/input` (alternativas quando o keytap falha) e cobrir diferenças de tray, OSD e atalhos entre GNOME e KDE com testes nos dois ambientes.
+
+### P5-3 · Histórico com busca/filtro
+- **Onde:** `src/history.rs` + aba Histórico (`apps/desktop/src/main.js`)
+- **Objetivo:** busca por texto, filtro por data, limite configurável e exportação do histórico.
 
 ---
 
