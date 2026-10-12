@@ -370,6 +370,8 @@ select_whisper_bin()
 list_input_devices()
 get_history()
 clear_history()
+save_overlay_position(x, y)
+reset_overlay_position()
 get_recent_logs()
 set_mode_editor()
 set_mode_terminal()
@@ -554,10 +556,26 @@ Detalhes e limitações atuais:
 
 - a CLI pura não envia notificações; o OSD é exclusivo do serviço da UI desktop.
 - o campo `osd_enabled` (default `true`) desativa todo o OSD.
+- com `overlay_enabled = true` (default), os estados Gravando/Transcrevendo **não** usam OSD: a janelinha de overlay na tela cumpre esse papel (ver §Overlay de ditado abaixo); o OSD segue para concluído, erro, aviso e limpeza.
 - o OSD de ciclo de vida é suprimido em reinícios internos (ex.: salvar configurações).
 - sem o binário `notify-send`, o OSD fica desativado (aviso único no log).
 - os nomes de ícone seguem o freedesktop icon naming spec e dependem do tema instalado.
 - comportamento validado no GNOME (`notify-send 0.8.8`); outros daemons/desktops podem variar.
+
+### Overlay de ditado
+
+A interface desktop cria uma segunda janela (`label = "overlay"`, carregada de
+`overlay.html`) sem decoracoes, transparente, sempre no topo, fora da barra de
+tarefas e nao-focavel (nao rouba o foco da janela de destino). Ela aparece
+durante a gravacao/transcricao com estado, cronometro e waveform, e e
+escondida ao voltar para idle:
+
+- nao expira no meio da gravacao (diferente de uma notificacao);
+- arrastavel (`data-tauri-drag-region`); a posicao e salva em
+  `overlay_x`/`overlay_y` do config.toml (pixels fisicos, com debounce);
+- sem posicao salva, abre no canto superior direito do monitor principal;
+- `overlay_enabled = false` desliga o overlay (e o OSD de gravando/transcrevendo volta);
+- comandos: `save_overlay_position(x, y)` e `reset_overlay_position()`.
 - o estado `Idle` sem transcrição (falha na transcrição, erro ao gravar, parada
   do serviço) envia uma notificação curta de limpeza, evitando que um OSD de
   "Escutando..." ou "Transcrevendo..." com `-t 0` fique preso na tela.
@@ -613,6 +631,7 @@ linux-voice-typer/
         ├── src-tauri/       (Tauri v2: comandos, tray, janela)
         ├── src/             (frontend JS/CSS)
         ├── index.html
+        ├── overlay.html     (janela de overlay: estado/cronometro/waveform)
         ├── package.json
         └── vite.config.js
 ```

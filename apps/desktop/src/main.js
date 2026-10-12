@@ -307,6 +307,19 @@ app.innerHTML = `
                 <span class="check-sub">Exibe avisos de desktop para gravação, transcrição, erros e início/parada do serviço.</span>
               </div>
             </label>
+
+            <label class="checkbox-card">
+              <input id="cfg-overlay-enabled" type="checkbox" />
+              <div>
+                <span class="check-label">Overlay na Tela (Gravação/Transcrição)</span>
+                <span class="check-sub">Janelinha fixa no topo com estado, cronômetro e waveform — não expira no meio da gravação. Arraste para reposicionar (a posição fica salva).</span>
+              </div>
+            </label>
+          </div>
+
+          <div class="actions-row" style="margin-top: 4px;">
+            <button type="button" id="reset-overlay-position" class="ghost" style="padding: 6px 12px; font-size: 0.82rem;">Reposicionar overlay (canto padrão)</button>
+            <span class="field-hint">Devolve o overlay ao canto superior direito da tela principal.</span>
           </div>
         </form>
       </section>
@@ -501,6 +514,11 @@ function setupHistoryActions() {
     await call('clear_history');
     await refreshHistory();
     showToast('Histórico limpo.');
+  });
+
+  $('reset-overlay-position')?.addEventListener('click', async () => {
+    await call('reset_overlay_position');
+    showToast('Overlay devolvido ao canto superior direito.');
   });
 
   $('browse-model')?.addEventListener('click', async () => {
@@ -943,6 +961,7 @@ function renderConfig(config) {
   $('cfg-start-system').checked = Boolean(config.start_with_system);
   $('cfg-close-to-tray').checked = config.close_to_tray !== false;
   $('cfg-osd-enabled').checked = config.osd_enabled !== false;
+  $('cfg-overlay-enabled').checked = config.overlay_enabled !== false;
   setInputDeviceValue(config.input_device || '');
 }
 
@@ -966,6 +985,7 @@ function collectConfig() {
     start_with_system: $('cfg-start-system').checked,
     close_to_tray: $('cfg-close-to-tray').checked,
     osd_enabled: $('cfg-osd-enabled').checked,
+    overlay_enabled: $('cfg-overlay-enabled').checked,
     input_device: $('cfg-input-device').value || null,
   };
 }

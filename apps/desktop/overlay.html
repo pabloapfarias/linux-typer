@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Linux Voice Typer Overlay</title>
+  </head>
+  <body class="overlay-body">
+    <main id="overlay" class="overlay" data-tauri-drag-region>
+      <span class="ov-dot" id="ov-dot" data-tauri-drag-region></span>
+      <div class="ov-text" data-tauri-drag-region>
+        <span class="ov-title" id="ov-title" data-tauri-drag-region>Gravando</span>
+        <span class="ov-timer" id="ov-timer" data-tauri-drag-region>00:00</span>
+      </div>
+      <div class="ov-wave" id="ov-wave" data-tauri-drag-region>
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </main>
+    <script type="module" src="/src/overlay.js"></script>
+  </body>
+</html>

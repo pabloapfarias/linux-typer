@@ -349,7 +349,7 @@ fn run_service_loop(
                 };
 
                 record_start = Some(Instant::now());
-                show_osd_notification(ServiceState::Recording, None, config.osd_enabled);
+                show_state_osd(&config, ServiceState::Recording);
                 notify_feedback(&service_inner, ServiceState::Recording, None, 0.0, 0);
 
                 with_inner(&service_inner, |inner| {
@@ -384,7 +384,7 @@ fn run_service_loop(
                 };
                 record_start = None;
 
-                show_osd_notification(ServiceState::Transcribing, None, config.osd_enabled);
+                show_state_osd(&config, ServiceState::Transcribing);
                 notify_feedback(&service_inner, ServiceState::Transcribing, None, 0.0, 0);
 
                 with_inner(&service_inner, |inner| {
@@ -499,7 +499,7 @@ fn run_service_loop(
         }
     }
 
-    show_osd_notification(ServiceState::Idle, None, config.osd_enabled);
+    show_state_osd(&config, ServiceState::Idle);
     notify_feedback(&service_inner, ServiceState::Idle, None, 0.0, 0);
 
     with_inner(&service_inner, |inner| {
@@ -577,6 +577,17 @@ fn show_osd_notification(state: ServiceState, transcript: Option<&str>, osd_enab
 
     let (icon, expire, title, body) = osd_content(state, transcript);
     notify::send(icon, expire, title, &body);
+}
+
+/// OSD de estado do ditado (gravando/transcrevendo/limpeza).
+///
+/// Com o overlay habilitado, a janelinha na tela ja mostra o estado e fica
+/// visivel o tempo todo; o OSD seria redundante e poderia expirar no meio da
+/// gravacao.
+fn show_state_osd(config: &Config, state: ServiceState) {
+    if !config.overlay_enabled {
+        show_osd_notification(state, None, config.osd_enabled);
+    }
 }
 
 fn friendly_error_message(err: &AppError) -> String {
@@ -676,6 +687,9 @@ fn fallback_config() -> Config {
         close_to_tray: true,
         osd_enabled: true,
         input_device: None,
+        overlay_enabled: true,
+        overlay_x: None,
+        overlay_y: None,
     }
 }
 

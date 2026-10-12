@@ -86,6 +86,12 @@ pub struct Config {
     pub osd_enabled: bool,
     #[serde(default)]
     pub input_device: Option<String>,
+    #[serde(default = "default_true")]
+    pub overlay_enabled: bool,
+    #[serde(default)]
+    pub overlay_x: Option<i32>,
+    #[serde(default)]
+    pub overlay_y: Option<i32>,
 }
 
 impl Config {
@@ -134,6 +140,9 @@ impl Config {
             close_to_tray: true,
             osd_enabled: true,
             input_device: None,
+            overlay_enabled: true,
+            overlay_x: None,
+            overlay_y: None,
         }
     }
 
@@ -253,6 +262,9 @@ mod tests {
             close_to_tray: true,
             osd_enabled: true,
             input_device: None,
+            overlay_enabled: true,
+            overlay_x: None,
+            overlay_y: None,
         }
     }
 

@@ -20,7 +20,8 @@
   - **⚪ Cinza:** Serviço pausado ou motor parado.
 - 🌊 **Waveform Reativa Real:** Barra de ondas sonoras no HUD que reage dinamicamente ao volume e à intensidade real da sua voz (cálculo de amplitude RMS no backend Rust via `cpal`), sem loops falsos de CSS.
 - ⏱️ **Cronômetro em Tempo Real:** Timer ao vivo durante a gravação e durante a transcrição do Whisper, mostrando exatamente quanto tempo foi falado e o tempo de processamento.
-- 🔔 **Notificações OSD (interface desktop):** Avisos de desktop via `notify-send` para “Escutando...”, “Transcrevendo...” e “Ditado Colado!”, sincronizados com o estado do serviço. A CLI não envia notificações.
+- 🔔 **Notificações OSD (interface desktop):** Avisos de desktop via `notify-send` para erros, avisos e “Ditado Colado!”, sincronizados com o estado do serviço. Podem ser desativados no config. A CLI não envia notificações.
+- 🪟 **Overlay na Tela:** Durante a gravação/transcrição, uma janelinha sempre no topo mostra o estado, o cronômetro e o waveform do microfone — ela **não expira no meio da gravação** (diferente de uma notificação). Arraste para reposicionar: a posição fica salva. Pode ser desligada nas Configurações.
 - ⌨️ **Gravador Interativo de Teclas:** Configure qualquer atalho ou tecla única (como `F7`, `F8`, `F12`, teclas macro) ou combinações (`Control+Alt+Space`, `Alt+Space`) apenas clicando em *Gravar Tecla* e pressionando-a no teclado.
 - 🚀 **Autostart no Sistema & Inicialização Automática:**
   - Opção nativa para iniciar junto com o login da sessão Linux (`~/.config/autostart`).
@@ -191,6 +192,7 @@ start_minimized = false       # inicia oculto na bandeja (se houver tray)
 start_with_system = true      # entrada em ~/.config/autostart
 close_to_tray = true          # fechar a janela esconde para a bandeja (se houver tray)
 osd_enabled = true            # notificacoes de desktop (false desativa todo o OSD)
+overlay_enabled = true        # janelinha na tela durante gravacao/transcricao (arraste para posicionar)
 # input_device = "Nome do microfone"  # padrao do sistema se omitido
 ```
 

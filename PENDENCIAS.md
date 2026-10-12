@@ -127,3 +127,4 @@ personalizado. Refinamentos futuros estao registrados em §P5.
 | 2026-10-12 | P4-5 — empacotamento validado (`.deb` e AppImage gerados) | `46dabd4` |
 | 2026-10-12 | P4-6 — serviço `systemd --user` (`service install/uninstall/status`) | `46dabd4` |
 | 2026-10-12 | P4-7 — backend `libei` via portal XDG (sessão reutilizada; validado no GNOME 50 com `ConnectToEIS` v2) | `d686b73` |
+| 2026-10-12 | P2-6 — overlay na tela para gravação/transcrição (janela sempre no topo, arrastável, posição salva) | a registrar |

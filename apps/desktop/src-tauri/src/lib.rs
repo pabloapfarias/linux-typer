@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use linux_voice_typer::cli::WhisperModel;
 use linux_voice_typer::config::{Config, PasteBackend, PasteShortcut};
@@ -8,12 +9,12 @@ use linux_voice_typer::doctor;
 use linux_voice_typer::error::{AppError, AppResult};
 use linux_voice_typer::fs_paths::AppPaths;
 use linux_voice_typer::injector;
-use linux_voice_typer::service::{VoiceTyperService, VoiceTyperStatus};
+use linux_voice_typer::service::{ServiceState, VoiceTyperService, VoiceTyperStatus};
 use serde::{Deserialize, Serialize};
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, State, WindowEvent};
 use tauri_plugin_dialog::DialogExt;
 
 struct DesktopState {
@@ -21,6 +22,7 @@ struct DesktopState {
     service: VoiceTyperService,
     last_doctor: Mutex<Option<String>>,
     last_paste_test: Mutex<Option<String>>,
+    overlay_enabled: AtomicBool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,6 +48,12 @@ struct DesktopConfig {
     osd_enabled: bool,
     #[serde(default)]
     input_device: Option<String>,
+    #[serde(default = "default_true_flag")]
+    overlay_enabled: bool,
+    #[serde(default)]
+    overlay_x: Option<i32>,
+    #[serde(default)]
+    overlay_y: Option<i32>,
 }
 
 fn default_true_flag() -> bool {
@@ -117,6 +125,9 @@ async fn save_config(
     let config = desktop_to_config(config);
     config.save(state.paths.config_path()).map_err(to_message)?;
     let validation_warning = config.validate().err().map(to_message);
+    state
+        .overlay_enabled
+        .store(config.overlay_enabled, Ordering::Relaxed);
     let _ = linux_voice_typer::autostart::set_autostart_enabled(start_with_system);
     state.service.reload_config(config).map_err(to_message)?;
     if was_running {
@@ -208,6 +219,31 @@ fn clear_history() -> Result<(), String> {
 }
 
 #[tauri::command]
+fn save_overlay_position(state: State<'_, DesktopState>, x: i32, y: i32) -> Result<(), String> {
+    // Nao cria config.toml do zero: so persiste se ele ja existe.
+    if !state.paths.config_path().exists() {
+        return Ok(());
+    }
+
+    let mut config = load_config_or_default(&state.paths).map_err(to_message)?;
+    config.overlay_x = Some(x);
+    config.overlay_y = Some(y);
+    config.save(state.paths.config_path()).map_err(to_message)
+}
+
+#[tauri::command]
+fn reset_overlay_position(state: State<'_, DesktopState>) -> Result<(), String> {
+    if !state.paths.config_path().exists() {
+        return Ok(());
+    }
+
+    let mut config = load_config_or_default(&state.paths).map_err(to_message)?;
+    config.overlay_x = None;
+    config.overlay_y = None;
+    config.save(state.paths.config_path()).map_err(to_message)
+}
+
+#[tauri::command]
 fn get_recent_logs(state: State<'_, DesktopState>) -> Vec<String> {
     state.service.recent_events()
 }
@@ -243,9 +279,10 @@ pub fn run() {
     let config = load_config_or_default(&paths).expect("failed to load config");
     let state = DesktopState {
         paths,
-        service: VoiceTyperService::new(config),
+        service: VoiceTyperService::new(config.clone()),
         last_doctor: Mutex::new(None),
         last_paste_test: Mutex::new(None),
+        overlay_enabled: AtomicBool::new(config.overlay_enabled),
     };
 
     tauri::Builder::default()
@@ -259,11 +296,12 @@ pub fn run() {
                 .service
                 .set_state_listener(std::sync::Arc::new(move |feedback| {
                     let state_str = match feedback.state {
-                        linux_voice_typer::service::ServiceState::Idle => "idle",
-                        linux_voice_typer::service::ServiceState::Recording => "recording",
-                        linux_voice_typer::service::ServiceState::Transcribing => "transcribing",
+                        ServiceState::Idle => "idle",
+                        ServiceState::Recording => "recording",
+                        ServiceState::Transcribing => "transcribing",
                     };
                     update_tray_icon(&app_h, state_str);
+                    update_overlay(&app_h, feedback.state);
                     let _ = app_h.emit(
                         "dictation-state",
                         serde_json::json!({
@@ -328,10 +366,72 @@ pub fn run() {
             set_mode_terminal,
             list_input_devices,
             get_history,
-            clear_history
+            clear_history,
+            save_overlay_position,
+            reset_overlay_position
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Mostra/esconde a janelinha de overlay conforme o estado do ditado.
+///
+/// O overlay fica visivel durante gravacao e transcricao (com timer e
+/// waveform) e e escondido ao voltar para idle. Diferente da notificacao,
+/// ele nao expira no meio da gravacao.
+fn update_overlay(app: &AppHandle, state: ServiceState) {
+    let Some(window) = app.get_webview_window("overlay") else {
+        return;
+    };
+
+    let enabled = app
+        .try_state::<DesktopState>()
+        .map(|state| state.overlay_enabled.load(Ordering::Relaxed))
+        .unwrap_or(false);
+
+    match state {
+        ServiceState::Recording | ServiceState::Transcribing => {
+            if !enabled {
+                return;
+            }
+
+            if !window.is_visible().unwrap_or(false) {
+                position_overlay(app, &window);
+                let _ = window.show();
+            }
+        }
+        ServiceState::Idle => {
+            if window.is_visible().unwrap_or(false) {
+                let _ = window.hide();
+            }
+        }
+    }
+}
+
+/// Restaura a posicao salva do overlay (ou o canto superior direito).
+fn position_overlay(app: &AppHandle, window: &tauri::WebviewWindow) {
+    let saved = app
+        .try_state::<DesktopState>()
+        .and_then(|state| load_config_or_default(&state.paths).ok())
+        .and_then(|config| match (config.overlay_x, config.overlay_y) {
+            (Some(x), Some(y)) => Some((x, y)),
+            _ => None,
+        });
+
+    if let Some((x, y)) = saved {
+        let _ = window.set_position(PhysicalPosition::new(x, y));
+        return;
+    }
+
+    if let Ok(Some(monitor)) = app.primary_monitor() {
+        let size = monitor.size();
+        let scale = monitor.scale_factor();
+        let width = (240.0 * scale) as i32;
+        let margin = (24.0 * scale) as i32;
+        let x = (size.width as i32 - width - margin).max(margin);
+        let y = margin;
+        let _ = window.set_position(PhysicalPosition::new(x, y));
+    }
 }
 
 fn update_tray_icon(app: &AppHandle, state: &str) {
@@ -521,6 +621,9 @@ fn config_to_desktop(config: Config) -> DesktopConfig {
         close_to_tray: config.close_to_tray,
         osd_enabled: config.osd_enabled,
         input_device: config.input_device,
+        overlay_enabled: config.overlay_enabled,
+        overlay_x: config.overlay_x,
+        overlay_y: config.overlay_y,
     }
 }
 
@@ -547,6 +650,9 @@ fn desktop_to_config(config: DesktopConfig) -> Config {
         close_to_tray: config.close_to_tray,
         osd_enabled: config.osd_enabled,
         input_device: config.input_device,
+        overlay_enabled: config.overlay_enabled,
+        overlay_x: config.overlay_x,
+        overlay_y: config.overlay_y,
     }
 }
 

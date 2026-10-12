@@ -55,3 +55,12 @@ osd_enabled = true
 # input_device: nome do microfone de entrada (veja a lista na aba
 # Configuracoes da interface). Se omitido, usa o padrao do sistema.
 # input_device = "Nome do microfone"
+
+# overlay_enabled: mostra uma janelinha na tela durante gravacao/transcricao
+# (estado, cronometro e waveform), substituindo as notificacoes persistentes
+# de "gravando"/"transcrevendo". Arraste o overlay para reposicionar.
+overlay_enabled = true
+
+# Posicao salva do overlay em pixels fisicos (omitidas = canto superior direito).
+# overlay_x = 1200
+# overlay_y = 24

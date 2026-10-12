@@ -19,6 +19,22 @@
         "minWidth": 860,
         "minHeight": 620,
         "visible": false
+      },
+      {
+        "label": "overlay",
+        "title": "Linux Voice Typer Overlay",
+        "url": "overlay.html",
+        "width": 240,
+        "height": 64,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focus": false,
+        "focusable": false,
+        "resizable": false,
+        "shadow": false,
+        "visible": false
       }
     ],
     "security": {
