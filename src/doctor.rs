@@ -1,6 +1,7 @@
 use cpal::traits::HostTrait;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
+use std::process::Command;
 
 use keytap::Tap;
 
@@ -144,6 +145,14 @@ fn collect_report(paths: &AppPaths) -> AppResult<DoctorReport> {
 
     if let Some(path) = &paste_status.xsel {
         paste_checks.push(ok(format!("xsel found: {path} (X11 fallback)")));
+    }
+
+    if portal_available() {
+        paste_checks.push(ok("XDG portal available (libei backend possible)"));
+    } else {
+        paste_checks.push(warn(
+            "XDG portal not detected; paste_backend = \"libei\" will not work",
+        ));
     }
 
     if !has_clipboard_tool {
@@ -362,6 +371,30 @@ fn collect_report(paths: &AppPaths) -> AppResult<DoctorReport> {
         runtime_checks,
         fatal_issues,
     })
+}
+
+/// Verifica se o portal XDG esta presente na sessao (nome D-Bus).
+fn portal_available() -> bool {
+    let output = Command::new("gdbus")
+        .args([
+            "call",
+            "--session",
+            "--dest",
+            "org.freedesktop.DBus",
+            "--object-path",
+            "/org/freedesktop/DBus",
+            "--method",
+            "org.freedesktop.DBus.NameHasOwner",
+            "org.freedesktop.portal.Desktop",
+        ])
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).contains("true")
+        }
+        _ => false,
+    }
 }
 
 fn label(level: CheckLevel) -> &'static str {

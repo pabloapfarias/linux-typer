@@ -8,6 +8,7 @@ use log::{error, info, warn};
 use crate::clipboard;
 use crate::config::{Config, PasteBackend, PasteShortcut};
 use crate::error::AppResult;
+use crate::libei;
 use crate::platform::find_command;
 use crate::uinput;
 
@@ -146,6 +147,7 @@ fn write_and_paste(config: &Config, text: &str, action: PasteAction) -> AppResul
         PasteBackend::Wtype => attempt_wtype(shortcut, action),
         PasteBackend::Ydotool => attempt_ydotool(shortcut, action),
         PasteBackend::Uinput => attempt_uinput(shortcut, action),
+        PasteBackend::Libei => attempt_libei(shortcut, action),
     };
 
     // Só restaurar clipboard anterior se o auto-paste confirmou sucesso.
@@ -160,6 +162,9 @@ fn write_and_paste(config: &Config, text: &str, action: PasteAction) -> AppResul
 }
 
 fn attempt_auto_paste(shortcut: PasteShortcut, action: PasteAction) -> PasteOutcome {
+    // O backend libei fica de fora do modo auto de proposito: ele exige um
+    // dialogo de consentimento do portal, que so deve aparecer quando o
+    // usuario escolhe "libei" explicitamente.
     let mut had_wtype_attempt = false;
 
     if has_binary("wtype") {
@@ -267,6 +272,26 @@ fn attempt_uinput(shortcut: PasteShortcut, action: PasteAction) -> PasteOutcome 
         Ok(()) => pasted(action, "uinput"),
         Err(failure) => {
             emit_failure("uinput", &failure, action);
+            clipboard_only_notice(action);
+            PasteOutcome::ClipboardOnly
+        }
+    }
+}
+
+fn attempt_libei(shortcut: PasteShortcut, action: PasteAction) -> PasteOutcome {
+    match libei::send_paste_shortcut(shortcut) {
+        Ok(()) => pasted(action, "libei"),
+        Err(err) => {
+            let failure = BackendFailure {
+                message: err.to_string(),
+                hint: Some(
+                    "verifique se o portal XDG esta ativo e aprove o dialogo de controle remoto"
+                        .into(),
+                ),
+                unsupported_virtual_keyboard: false,
+                daemon_or_permission_issue: false,
+            };
+            emit_failure("libei", &failure, action);
             clipboard_only_notice(action);
             PasteOutcome::ClipboardOnly
         }

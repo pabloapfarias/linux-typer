@@ -10,6 +10,7 @@ pub mod fs_paths;
 pub mod history;
 pub mod hotkey;
 pub mod injector;
+pub mod libei;
 pub mod notify;
 pub mod platform;
 pub mod service;

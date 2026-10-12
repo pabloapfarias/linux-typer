@@ -8,7 +8,7 @@
 ## 🌟 Principais Recursos
 
 - 🧠 **Privacidade Total & Offline:** Todo o processamento de áudio é feito localmente na sua máquina utilizando Whisper.cpp. Sem envio de dados para servidores externos ou nuvem.
-- ⚡ **Auto-Paste Inteligente no Wayland:** Backend nativo com teclado virtual de kernel (`uinput`) que resolve de ponta a ponta as limitações tradicionais de colagem no Wayland (compatível com GNOME, KDE, Hyprland, Sway, etc.).
+- ⚡ **Auto-Paste Inteligente no Wayland:** Backend nativo com teclado virtual de kernel (`uinput`) que resolve de ponta a ponta as limitações tradicionais de colagem no Wayland (compatível com GNOME, KDE, Hyprland, Sway, etc.). Backends disponíveis: `auto`, `uinput`, `ydotool`, `wtype`, `libei` (portal XDG, experimental) e `none`.
 - 🎛️ **Interface Desktop Moderna em Abas:**
   - **Principal:** Controle de serviço em tempo real, alternador rápido de modo (Editor vs Terminal), visualizador de transcrição com cópia em 1 clique e cards de status.
   - **Configurações:** Painel completo para idioma, microfone de entrada, modelo Whisper, caminhos (com seletores nativos de arquivo), inicialização automática e preferências de injeção.
@@ -182,7 +182,7 @@ whisper_bin = "/home/USER/.local/share/linux-voice-typer/whisper.cpp/build/bin/w
 insert_mode = "clipboard"
 restore_clipboard = false
 auto_paste = true
-paste_backend = "auto"        # auto = wtype -> ydotool -> uinput -> clipboard
+paste_backend = "auto"        # auto = wtype -> ydotool -> uinput -> clipboard ("libei" usa o portal XDG)
 paste_shortcut = "ctrl_v"     # ctrl_v (editor) | ctrl_shift_v (terminal)
 trim_text = true
 temp_dir = "/home/USER/.local/share/linux-voice-typer/temp"

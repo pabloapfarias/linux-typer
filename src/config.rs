@@ -14,6 +14,7 @@ pub enum PasteBackend {
     Wtype,
     Ydotool,
     Uinput,
+    Libei,
     None,
 }
 
@@ -24,6 +25,7 @@ impl PasteBackend {
             Self::Wtype => "wtype",
             Self::Ydotool => "ydotool",
             Self::Uinput => "uinput",
+            Self::Libei => "libei",
             Self::None => "none",
         }
     }

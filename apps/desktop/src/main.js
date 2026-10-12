@@ -224,10 +224,11 @@ app.innerHTML = `
             <label for="cfg-backend">Backend de Injeção de Teclas</label>
             <select id="cfg-backend">
               <option value="uinput">uinput (Nativo do Kernel Linux - Recomendado)</option>
+              <option value="auto">auto (Detecção automática)</option>
               <option value="ydotool">ydotool</option>
               <option value="wtype">wtype (Wayland wlroots)</option>
+              <option value="libei">libei (Portal XDG - Experimental)</option>
               <option value="none">none (Apenas copiar para o clipboard)</option>
-              <option value="auto">auto (Detecção automática)</option>
             </select>
             <span class="field-hint">Método utilizado para simular o atalho de colar.</span>
           </div>

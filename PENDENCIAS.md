@@ -31,7 +31,7 @@ prioridade. Base: análise do código em **2026-10-12** (commit `54c9734`).
 | P1 | Correções importantes | 0 |
 | P2 | Notificações (evolução) | 0 |
 | P3 | Qualidade e infraestrutura | 0 |
-| P4 | Backlog de features | 1 |
+| P4 | Backlog de features | 0 |
 
 ---
 
@@ -65,10 +65,9 @@ ver §Concluídos.
 
 ## P4 — Backlog de features
 
-### P4-7 · Suporte a libei / portal desktop
-- **Tipo:** feature de pesquisa · **Área:** injeção
-- **Situação:** não implementado nesta fase. Requer sessão persistente do portal XDG RemoteDesktop (com consentimento do usuário) + cliente EIS/LibEI (ex.: crate `reis`), com handshake, keymap e emulação de teclado; não é validável neste ambiente e a UX seria ruim se a sessão fosse criada a cada ditada (popup de consentimento por colagem).
-- **Desenho sugerido:** sessão única mantida pelo serviço, backend `paste_backend = "libei"` e fallback automático para uinput/ydotool quando o portal não estiver disponível.
+Nenhum item aberto. O P4-7 (libei/portal) foi concluído em 2026-10-12 — ver
+§Concluídos. Refinamentos futuros (persistência da sessão entre reinícios e
+validação no KDE) estão anotados em `TECHNICAL.md` §Proximos passos.
 
 ---
 
@@ -106,3 +105,4 @@ ver §Concluídos.
 | 2026-10-12 | P4-4 — clipboard X11 via `xclip`/`xsel` com detecção automática | `46dabd4` |
 | 2026-10-12 | P4-5 — empacotamento validado (`.deb` e AppImage gerados) | `46dabd4` |
 | 2026-10-12 | P4-6 — serviço `systemd --user` (`service install/uninstall/status`) | `46dabd4` |
+| 2026-10-12 | P4-7 — backend `libei` via portal XDG (sessão reutilizada; validado no GNOME 50 com `ConnectToEIS` v2) | a registrar |

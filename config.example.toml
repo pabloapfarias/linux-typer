@@ -9,6 +9,7 @@ insert_mode = "clipboard"
 # - "wtype": usa wtype
 # - "ydotool": usa ydotool
 # - "uinput": usa /dev/uinput diretamente pelo app
+# - "libei": usa o portal XDG RemoteDesktop (consentimento na primeira vez)
 # - "none": copia para o clipboard e nao cola automaticamente
 #
 # Valor padrao gerado pelo setup: "auto".

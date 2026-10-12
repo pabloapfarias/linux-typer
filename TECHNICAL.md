@@ -451,6 +451,7 @@ A UI permite escolher:
 uinput
 ydotool
 wtype
+libei
 none
 auto
 ```
@@ -461,6 +462,19 @@ Recomendado no GNOME/Wayland:
 paste_backend = "uinput"
 restore_clipboard = false
 ```
+
+### Backend libei (portal XDG)
+
+O backend `libei` usa o protocolo EI via portal `RemoteDesktop`: na primeira
+ditada o desktop mostra um dialogo de consentimento e a sessao fica
+reutilizada pelo processo (o dialogo nao aparece de novo). Diferente de
+uinput/ydotool, nao exige `/dev/uinput` nem o grupo `input`, funcionando tambem
+em ambiente sandbox (Flatpak).
+
+- nao faz parte do modo `auto`: o dialogo so aparece se o backend for escolhido;
+- validado no GNOME 50 + `xdg-desktop-portal-gnome` (`ConnectToEIS` v2);
+- a sessao e por processo: encerrar o app exige novo consentimento;
+- requer um portal XDG ativo (o `doctor` reporta `XDG portal available`).
 
 ### Tray icon
 
@@ -584,6 +598,7 @@ linux-voice-typer/
 │   ├── clipboard.rs         (wl-clipboard ou xclip/xsel)
 │   ├── injector.rs          (auto: wtype -> ydotool -> uinput)
 │   ├── uinput.rs            (teclado virtual via /dev/uinput)
+│   ├── libei.rs             (injecao via portal XDG / protocolo EI)
 │   ├── notify.rs            (notificacoes OSD via notify-send)
 │   ├── service.rs           (VoiceTyperService)
 │   ├── doctor.rs            (diagnostico)
@@ -795,13 +810,13 @@ ydotool key 29:1 47:1 47:0 29:0
 - Alguns terminais preferem `Ctrl+Shift+V`.
 - Tray icon no GNOME pode depender de suporte AppIndicator/KStatusNotifier.
 - Nao ha streaming em tempo real.
-- Injecao via libei/portal ainda nao implementada (apenas wtype/ydotool/uinput).
+- O backend `libei` nao entra no modo `auto` e a sessao do portal nao persiste entre reinicios do app.
 
 ## Proximos passos
 
 Nao implementados ou ainda experimentais nesta fase:
 
-- Suporte a `libei` / portal desktop (injecao via portal; hoje apenas wtype/ydotool/uinput)
+- Persistencia da sessao libei entre reinicios (token/restore do portal) e validacao no KDE/Plasma
 - Suporte melhor a GNOME/KDE Wayland
 - Historico com busca/filtro (o historico basico ja existe)
 
