@@ -244,6 +244,13 @@ pub fn run() {
                 update_tray_icon(app.handle(), "stopped");
             }
 
+            // A janela e criada oculta (tauri.conf.json). Mostrar quando o
+            // usuario nao pediu inicio minimizado ou quando nao ha tray icon
+            // para reabrir a janela depois.
+            if !config.start_minimized || !tray_host_available(app.handle()) {
+                show_main_window(app.handle());
+            }
+
             Ok(())
         })
         .on_window_event(|window, event| {

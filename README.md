@@ -101,7 +101,7 @@ npm run tauri dev
 ### Principais Ações na Interface:
 - **Gravar Tecla de Atalho:** Acesse a aba **Configurações**, clique em **Gravar Tecla** e pressione a tecla desejada (ex: `F7`, `F8` ou `Control+Alt+Space`).
 - **Alternar Modo de Colagem:** Na aba **Principal**, selecione entre **Editor & Navegador** (`Ctrl+V`) ou **Terminal & Shell** (`Ctrl+Shift+V`).
-- **Iniciar com o Sistema:** Ative a caixa **Iniciar com o Sistema (Autostart)** para criar a entrada em `~/.config/autostart` e iniciar o aplicativo a cada login (a janela abre visível; a opção *Iniciar Minimizado* é salva no config, mas ainda não é aplicada).
+- **Iniciar com o Sistema:** Ative a caixa **Iniciar com o Sistema (Autostart)** para criar a entrada em `~/.config/autostart` e iniciar o aplicativo a cada login (com a opção *Iniciar Minimizado* ativa e tray disponível, a janela inicia oculta na bandeja).
 
 ---
 
@@ -146,7 +146,7 @@ paste_shortcut = "ctrl_v"     # ctrl_v (editor) | ctrl_shift_v (terminal)
 trim_text = true
 temp_dir = "/home/USER/.local/share/linux-voice-typer/temp"
 auto_start_service = true     # inicia o servico ao abrir o app
-start_minimized = false       # reservado (ainda nao aplicado)
+start_minimized = false       # inicia oculto na bandeja (se houver tray)
 start_with_system = true      # entrada em ~/.config/autostart
 close_to_tray = true          # fechar a janela esconde para a bandeja (se houver tray)
 osd_enabled = true            # notificacoes de desktop (false desativa todo o OSD)

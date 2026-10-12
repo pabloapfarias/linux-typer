@@ -462,6 +462,7 @@ Comportamento:
 - a deteccao do host usa o watcher `org.kde.StatusNotifierWatcher` via D-Bus (`gdbus`)
 - sem host StatusNotifier detectado (ex.: GNOME sem extensao AppIndicator), fechar a janela encerra o app
 - com `close_to_tray = false`, fechar a janela tambem encerra o app
+- com `start_minimized = true` e host de tray presente, o app inicia com a janela oculta; sem tray, a janela abre mesmo assim
 - o serviço pode continuar rodando pelo tray
 - `Abrir Configurações` mostra a janela novamente
 - `Sair` encerra o app de verdade
@@ -517,8 +518,8 @@ Detalhes e limitações atuais:
 - a CLI pura não envia notificações; o OSD é exclusivo do serviço da UI desktop.
 - o campo `osd_enabled` (default `true`) desativa todo o OSD.
 - o OSD de ciclo de vida é suprimido em reinícios internos (ex.: salvar configurações).
-- se `notify-send` não existir, o erro é ignorado silenciosamente.
-- os nomes de ícone dependem do tema de ícones instalado.
+- sem o binário `notify-send`, o OSD fica desativado (aviso único no log).
+- os nomes de ícone seguem o freedesktop icon naming spec e dependem do tema instalado.
 - o estado `Idle` sem transcrição (falha na transcrição, erro ao gravar, parada
   do serviço) envia uma notificação curta de limpeza, evitando que um OSD de
   "Escutando..." ou "Transcrevendo..." com `-t 0` fique preso na tela.
@@ -559,7 +560,8 @@ linux-voice-typer/
 │   ├── clipboard.rs         (wl-copy / wl-paste)
 │   ├── injector.rs          (auto: wtype -> ydotool -> uinput)
 │   ├── uinput.rs            (teclado virtual via /dev/uinput)
-│   ├── service.rs           (VoiceTyperService + notificacoes OSD)
+│   ├── notify.rs            (notificacoes OSD via notify-send)
+│   ├── service.rs           (VoiceTyperService)
 │   ├── doctor.rs            (diagnostico)
 │   ├── setup.rs             (setup do whisper.cpp e modelo)
 │   ├── downloader.rs        (execucao de comandos externos)
@@ -769,7 +771,6 @@ ydotool key 29:1 47:1 47:0 29:0
 - Tray icon no GNOME pode depender de suporte AppIndicator/KStatusNotifier.
 - Nao ha streaming em tempo real.
 - Nao ha escolha de microfone por CLI ainda.
-- `start_minimized` existe no config.toml e na UI, mas ainda nao e aplicado: a janela abre visivel.
 - O clipboard depende de `wl-clipboard`, entao o app e Wayland-first; em X11 puro a colagem nao funciona.
 
 ## Proximos passos

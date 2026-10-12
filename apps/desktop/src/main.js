@@ -874,18 +874,19 @@ function renderConfig(config) {
 }
 
 function collectConfig() {
+  const base = currentConfig || {};
   return {
-    ...(currentConfig || {}),
+    ...base,
     hotkey: $('cfg-hotkey').value.trim(),
     language: $('cfg-language').value.trim() || 'pt',
     model_path: $('cfg-model').value.trim(),
     whisper_bin: $('cfg-whisper').value.trim(),
-    insert_mode: 'clipboard',
+    insert_mode: base.insert_mode || 'clipboard',
     restore_clipboard: $('cfg-restore').checked,
-    auto_paste: true,
+    auto_paste: base.auto_paste !== false,
     paste_backend: $('cfg-backend').value,
     paste_shortcut: $('cfg-shortcut').value,
-    trim_text: true,
+    trim_text: base.trim_text !== false,
     temp_dir: $('cfg-temp').value.trim(),
     auto_start_service: $('cfg-auto-start').checked,
     start_minimized: $('cfg-start-minimized').checked,

@@ -25,8 +25,8 @@ prioridade. Base: análise do código em **2026-10-12** (commit `54c9734`).
 | Prioridade | Foco | Itens |
 |---|---|---|
 | P0 | Bugs críticos de uso diário | 0 |
-| P1 | Correções importantes | 2 |
-| P2 | Notificações (evolução) | 3 |
+| P1 | Correções importantes | 0 |
+| P2 | Notificações (evolução) | 1 |
 | P3 | Qualidade e infraestrutura | 10 |
 | P4 | Backlog de features | 7 |
 
@@ -41,30 +41,12 @@ concluídos em 2026-10-12 — ver §Concluídos.
 
 ## P1 — Correções importantes
 
-### P1-2 · `start_minimized` é salvo, mas não tem efeito
-- **Tipo:** feature incompleta · **Área:** desktop / config
-- **Onde:** `src/config.rs:78`; `apps/desktop/src-tauri/src/lib.rs:230-237` e `:410`,`:433`; `apps/desktop/src/main.js:854`,`:873`; `src/autostart.rs`
-- **Sintoma:** o checkbox "Iniciar Minimizado na Bandeja" salva o campo, mas nenhum código o consome; a janela sempre abre visível (inclusive no autostart).
-- **Decisão necessária:** implementar (janela `visible: false` quando `start_minimized`; flag no `.desktop` do autostart) **ou** remover o checkbox/campo e documentar como não suportado.
-- **Doc afetado:** `README.md` §Ações na Interface, `TECHNICAL.md` §Limitações, `config.example.toml`.
-
-### P1-5 · Salvar pela UI sobrescreve configurações existentes
-- **Tipo:** bug · **Área:** frontend
-- **Onde:** `apps/desktop/src/main.js:858-876` (`collectConfig()`)
-- **Sintoma:** o salvamento força `auto_paste: true`, `trim_text: true` e `insert_mode: "clipboard"`, descartando valores custom do `config.toml` editados manualmente.
-- **Correção sugerida:** preservar os valores de `currentConfig` (remover os overrides fixos) ou expor controles de `auto_paste`/`trim_text` na aba Configurações.
+Nenhum item aberto. Os itens originais (P1-1, P1-2, P1-3, P1-4 e P1-5) foram
+concluídos em 2026-10-12 — ver §Concluídos.
 
 ---
 
 ## P2 — Notificações (evolução)
-
-### P2-3 · Robustez do `notify-send`
-- **Onde:** `src/service.rs` (`send_osd`)
-- **Itens:** verificar disponibilidade do `notify-send` (hoje o erro é ignorado silenciosamente); fallback de ícones independente do tema. O campo `osd_enabled` foi implementado junto com P2-2.
-
-### P2-4 · Extrair OSD para módulo dedicado
-- **Onde:** hoje tudo em `src/service.rs:429-482`
-- **Objetivo:** criar `src/notify.rs` com API testável (título, corpo, estado, expiração), separando notificação do loop de serviço.
 
 ### P2-5 · Revisar `-e` (transient) + `-t 0` por daemon
 - **Objetivo:** validar comportamento no GNOME e no KDE/Plasma; documentar as diferenças observadas e ajustar flags se necessário.
@@ -131,3 +113,7 @@ concluídos em 2026-10-12 — ver §Concluídos.
 | 2026-10-12 | P1-3 — limpeza de WAV/TXT temporários após cada ditada | `7683a43` |
 | 2026-10-12 | P2-1 — OSD de erro com mensagem amigável | `7683a43` |
 | 2026-10-12 | P2-2 — OSD de ciclo de vida + campo `osd_enabled` (parte do P2-3) | `7683a43` |
+| 2026-10-12 | P1-2 — `start_minimized` implementado (janela oculta com tray + fallback seguro) | a registrar |
+| 2026-10-12 | P1-5 — salvar pela UI preserva `auto_paste`/`trim_text`/`insert_mode` | a registrar |
+| 2026-10-12 | P2-3 — disponibilidade do `notify-send` verificada (ícones seguem o spec freedesktop) | a registrar |
+| 2026-10-12 | P2-4 — OSD extraído para `src/notify.rs` | a registrar |

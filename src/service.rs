@@ -11,6 +11,7 @@ use crate::audio::Recorder;
 use crate::config::{Config, PasteBackend, PasteShortcut};
 use crate::error::{AppError, AppResult};
 use crate::hotkey::{HotkeyListener, HotkeyMode, TriggerEvent};
+use crate::notify;
 use crate::process_recording;
 
 const MAX_EVENTS: usize = 80;
@@ -104,7 +105,7 @@ impl VoiceTyperService {
         push_event(&mut inner, "Serviço iniciado");
 
         if notify && osd_enabled {
-            send_osd(
+            notify::send(
                 "media-playback-start",
                 "2500",
                 "▶️ Serviço iniciado",
@@ -156,7 +157,7 @@ impl VoiceTyperService {
         push_event(&mut inner, "Serviço parado");
 
         if notify && inner.config.osd_enabled {
-            send_osd(
+            notify::send(
                 "media-playback-pause",
                 "2500",
                 "⏸️ Serviço parado",
@@ -298,7 +299,7 @@ fn run_service_loop(
                 );
             });
             if config.osd_enabled {
-                send_osd(
+                notify::send(
                     "dialog-warning",
                     "5000",
                     "⚠️ Hotkey global indisponível",
@@ -364,7 +365,7 @@ fn run_service_loop(
                         });
 
                         if config.osd_enabled {
-                            send_osd(
+                            notify::send(
                                 "dialog-error",
                                 "4000",
                                 "⚠️ Falha ao gravar",
@@ -481,7 +482,7 @@ fn run_service_loop(
                             });
 
                             if config_cloned.osd_enabled {
-                                send_osd(
+                                notify::send(
                                     "dialog-error",
                                     "4000",
                                     "⚠️ Ditado falhou",
@@ -572,7 +573,7 @@ fn show_osd_notification(state: ServiceState, transcript: Option<&str>, osd_enab
     }
 
     let (icon, expire, title, body) = osd_content(state, transcript);
-    send_osd(icon, expire, title, &body);
+    notify::send(icon, expire, title, &body);
 }
 
 fn friendly_error_message(err: &AppError) -> String {
@@ -601,14 +602,6 @@ fn truncate_chars(text: &str, max: usize) -> String {
         let cut: String = text.chars().take(max).collect();
         format!("{cut}...")
     }
-}
-
-fn send_osd(icon: &str, expire: &str, title: &str, body: &str) {
-    let _ = std::process::Command::new("notify-send")
-        .args([
-            "-r", "4242", "-a", "Linux Voice Typer", "-i", icon, "-e", "-t", expire, title, body,
-        ])
-        .spawn();
 }
 
 fn with_inner(inner: &Arc<Mutex<ServiceInner>>, action: impl FnOnce(&mut ServiceInner)) {

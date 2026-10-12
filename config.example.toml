@@ -35,7 +35,7 @@ temp_dir = "/home/USER/.local/share/linux-voice-typer/temp"
 # auto_start_service: inicia o servico de voz ao abrir a interface desktop.
 auto_start_service = true
 
-# start_minimized: reservado (ainda nao aplicado pelo app; a janela abre visivel).
+# start_minimized: inicia com a janela oculta na bandeja (quando ha tray).
 start_minimized = false
 
 # start_with_system: cria/remove entrada de autostart em ~/.config/autostart.

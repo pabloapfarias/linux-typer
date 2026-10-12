@@ -9,6 +9,7 @@ pub mod error;
 pub mod fs_paths;
 pub mod hotkey;
 pub mod injector;
+pub mod notify;
 pub mod platform;
 pub mod service;
 pub mod setup;
