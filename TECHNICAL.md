@@ -1,6 +1,11 @@
 # linux-voice-typer — Documentacao tecnica
 
-`linux-voice-typer` e um MVP Linux-first, sem interface grafica, para ditado local com Whisper e colagem automatica no input ativo.
+`linux-voice-typer` e um app Linux-first (Wayland) para ditado local com Whisper e colagem automatica no input ativo.
+
+O projeto tem duas camadas:
+
+- o core Rust com CLI (`cargo run -- ...`), base de debug e uso avancado;
+- a interface desktop opcional em Tauri v2 (`apps/desktop/`), que consome o mesmo core.
 
 Fluxo principal:
 
@@ -35,6 +40,25 @@ cargo run -- run --terminal-paste
 cargo run -- run --terminal-hotkey --terminal-paste
 ```
 
+Flags do `setup`:
+
+```bash
+cargo run -- setup --yes                  # nao pede confirmacao
+cargo run -- setup --model medium         # tiny, base, small (default) ou medium
+cargo run -- setup --skip-system-deps     # nao checa dependencias do sistema
+cargo run -- setup --skip-whisper-build   # nao compila o whisper.cpp
+cargo run -- setup --skip-model-download  # nao baixa o modelo
+cargo run -- setup --rebuild-whisper      # recompila mesmo se o binario existir
+cargo run -- setup --force                # baixa/atualiza mesmo se ja existir
+```
+
+Flag global (aceita em qualquer subcomando, mas so faz sentido no `run`):
+
+```bash
+# --terminal-hotkey: Enter inicia e Enter para parar a gravacao (sem hotkey global)
+cargo run -- run --terminal-hotkey
+```
+
 Com binario buildado:
 
 ```bash
@@ -45,7 +69,11 @@ cargo build --release
 ./target/release/linux-voice-typer run
 ./target/release/linux-voice-typer run --editor-paste
 ./target/release/linux-voice-typer run --terminal-paste
+./target/release/linux-voice-typer run --terminal-hotkey --terminal-paste
 ```
+
+`--editor-paste` e `--terminal-paste` sao mutuamente exclusivos e so
+sobrescrevem o atalho durante aquela execucao.
 
 ## Uso diario
 
@@ -61,7 +89,7 @@ cargo run -- run --editor-paste
 # Terminais Linux, incluindo Codex CLI: envia Ctrl+Shift+V
 cargo run -- run --terminal-paste
 
-# Modo de hotkey por terminal: Enter inicia e Enter para a gravacao
+# Modo de hotkey por terminal: Enter inicia e Enter para parar a gravacao
 cargo run -- run --terminal-hotkey --terminal-paste
 ```
 
@@ -215,7 +243,7 @@ restore_clipboard = false
 3. oferece instalacao automatica no Ubuntu/Debian via `apt`
 4. clona `whisper.cpp` em `~/.local/share/linux-voice-typer/whisper.cpp`
 5. compila `whisper.cpp`
-6. baixa um modelo Whisper automaticamente
+6. baixa um modelo Whisper (default `small`; `--model` escolhe tiny/base/small/medium)
 7. cria ou atualiza `config.toml` com caminhos reais
 8. cria `config.toml.bak` antes de sobrescrever um config existente
 
@@ -239,9 +267,14 @@ restore_clipboard = false
 - microfone padrao via `cpal`
 - inicializacao do `keytap`
 
+Os itens reportados como `ERROR` (Linux, `wl-copy`, `config.toml`,
+`whisper-cli`, `model`, `temp_dir` gravavel e microfone) bloqueiam o comando
+`run`. Quando o ambiente esta incompleto e o terminal e interativo, o `run`
+oferece executar o `setup` na hora.
+
 ## Interface desktop / Tauri
 
-A primeira interface desktop fica em:
+A interface desktop fica em:
 
 ```text
 apps/desktop/
@@ -339,10 +372,16 @@ is_running()
 reload_config()
 set_paste_shortcut()
 set_paste_backend()
+set_state_listener()
 last_transcript()
 status()
 recent_events()
 ```
+
+`set_state_listener()` recebe um callback (`DictationFeedback` com estado,
+nivel de audio, tempo decorrido e transcricao) chamado a cada mudanca de
+estado. A interface desktop usa esse callback para atualizar o tray icon e o
+HUD em tempo real.
 
 O serviço cria um loop em thread separada, escuta a hotkey global e usa o mesmo
 pipeline validado pela CLI:
@@ -360,10 +399,10 @@ hotkey stop
 
 - `Iniciar` carrega `config.toml`, valida caminhos e inicia o serviço.
 - `Parar` sinaliza encerramento do loop e aguarda a thread finalizar.
-- `Restart` existe no backend para uso futuro ou por extensoes da UI.
+- `Reiniciar Serviço` (aba Diagnóstico & Debug) reinicia o loop com a config atual.
 
-Se a configuracao mudar enquanto o serviço está rodando, salve e reinicie o
-serviço para garantir que a thread use os novos valores.
+`save_config()` grava o `config.toml` e, se o serviço estava rodando, reinicia
+o serviço automaticamente para que a thread use os novos valores.
 
 ### Modo Editor e modo Terminal
 
@@ -419,10 +458,17 @@ Sair
 
 Comportamento:
 
-- fechar a janela esconde o app
+- fechar a janela esconde o app (isso acontece mesmo sem tray icon disponivel)
 - o serviço pode continuar rodando pelo tray
 - `Abrir Configurações` mostra a janela novamente
 - `Sair` encerra o app de verdade
+
+Estados do icone:
+
+- verde: serviço rodando (idle)
+- vermelho: gravando
+- cinza: serviço parado
+- durante a transcricao o icone permanece verde
 
 No GNOME, a exibição do tray/AppIndicator pode depender de suporte do ambiente
 ou de extensão compatível com AppIndicator/KStatusNotifier.
@@ -443,6 +489,27 @@ O serviço mantém os últimos eventos em memória. Exemplos:
 A tela mostra eventos resumidos. Logs técnicos detalhados continuam mais úteis
 pelo console e pela CLI.
 
+### Notificações OSD
+
+Quando o serviço (interface desktop) muda de estado, o core dispara uma
+notificação de desktop via `notify-send` com ID fixo (`-r 4242`), substituindo
+a notificação anterior:
+
+| Estado | Icone | Expira | Texto |
+|---|---|---|---|
+| Gravando | `audio-input-microphone` | nunca (`-t 0`) | "🎙️ Escutando..." / "Fale agora no microfone..." |
+| Transcrevendo | `system-run` | nunca (`-t 0`) | "⏳ Transcrevendo..." / "Processando áudio com Whisper..." |
+| Concluído | `emblem-default` | 3,5s | "✓ Ditado Colado!" + preview de ate 60 caracteres |
+
+Detalhes e limitações atuais:
+
+- a CLI pura não envia notificações; o OSD é exclusivo do serviço da UI desktop.
+- se `notify-send` não existir, o erro é ignorado silenciosamente.
+- os nomes de ícone dependem do tema de ícones instalado.
+- estados `Idle` sem transcrição (falha na transcrição, erro ao gravar, parada
+  do serviço) não enviam notificação nova, então um OSD de "Escutando..." ou
+  "Transcrevendo..." com `-t 0` pode permanecer na tela nesses casos.
+
 ### Diagnostico pela interface
 
 `run_doctor()` usa `doctor::doctor_report_text()` do core.
@@ -458,21 +525,39 @@ cargo run -- paste-test
 
 ### Estrutura atual
 
-Foi adotada a abordagem incremental:
-
 ```text
 linux-voice-typer/
-├── src/lib.rs
-├── src/main.rs
-├── src/service.rs
-├── apps/
-│   └── desktop/
-│       ├── src-tauri/
-│       ├── index.html
-│       ├── package.json
-│       └── src/
+├── Cargo.toml
+├── config.example.toml
+├── config.toml              (gerado pelo setup; ignorado pelo git)
 ├── README.md
-└── TECHNICAL.md
+├── TECHNICAL.md
+├── src/
+│   ├── main.rs              (CLI: setup, doctor, paste-test, run)
+│   ├── lib.rs               (process_recording: WAV -> whisper -> paste)
+│   ├── cli.rs               (definicao dos comandos e flags)
+│   ├── config.rs            (Config, PasteBackend, PasteShortcut)
+│   ├── fs_paths.rs          (AppPaths: config.toml, whisper.cpp, temp)
+│   ├── platform.rs          (Linux/Wayland/package manager)
+│   ├── error.rs             (AppError)
+│   ├── audio.rs             (Recorder: cpal -> WAV 16 kHz mono)
+│   ├── hotkey.rs            (keytap global + modo terminal)
+│   ├── transcriber.rs       (executa whisper-cli)
+│   ├── clipboard.rs         (wl-copy / wl-paste)
+│   ├── injector.rs          (auto: wtype -> ydotool -> uinput)
+│   ├── uinput.rs            (teclado virtual via /dev/uinput)
+│   ├── service.rs           (VoiceTyperService + notificacoes OSD)
+│   ├── doctor.rs            (diagnostico)
+│   ├── setup.rs             (setup do whisper.cpp e modelo)
+│   ├── downloader.rs        (execucao de comandos externos)
+│   └── autostart.rs         (entrada .desktop em ~/.config/autostart)
+└── apps/
+    └── desktop/
+        ├── src-tauri/       (Tauri v2: comandos, tray, janela)
+        ├── src/             (frontend JS/CSS)
+        ├── index.html
+        ├── package.json
+        └── vite.config.js
 ```
 
 O crate principal ainda preserva `cargo run -- ...` para a CLI.
@@ -515,16 +600,20 @@ Apos `npm run tauri dev`, a janela deve mostrar:
 - Microfone detectado
 - Ultima transcricao
 
-Botaoes obrigatorios e seus efeitos:
+Botaoes e seus efeitos:
 
-- **Iniciar**: inicia o servico, exibe "Servico iniciado" ou "Servico ja esta rodando"
-- **Parar**: para o servico, exibe "Servico parado"
+- **Iniciar / Pausar**: botao unico de alternancia (topo e aba Principal); inicia
+  se estiver parado, para se estiver rodando
 - **Modo Editor**: aplica `ctrl_v`, salva no config.toml
 - **Modo Terminal**: aplica `ctrl_shift_v`, salva no config.toml
-- **Testar paste**: executa `paste_test_report()` e mostra resultado
-- **Rodar doctor**: executa `doctor_report_text()` e mostra resultado
-- **Salvar configuracoes**: grava config.toml e recarrega servico
+- **Testar paste**: executa `paste_test_report()` e mostra resultado no console
+- **Rodar doctor**: executa `doctor_report_text()` e mostra resultado no console
+- **Reiniciar Servico**: reinicia o loop do servico com a config atual
+- **Atualizar Logs**: recarrega a lista de eventos do daemon
+- **Copiar / Limpar**: copia ou limpa a saida do console de diagnostico
+- **Salvar configuracoes**: grava config.toml e reinicia o servico se ele estiver rodando
 - **Abrir config**: abre config.toml no editor do sistema
+- **Gravar Tecla**: captura a tecla/combinacao pressionada e preenche o campo Hotkey
 
 ### Tray icon no GNOME
 
@@ -552,7 +641,9 @@ gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com
 ```
 
 Sem a extensao, o app funciona normalmente pela janela, mas sem tray icon.
-O fechar janela pode encerrar o app ao inves de esconder para o tray.
+Como o fechamento da janela sempre a esconde, sem tray icon o app pode ficar
+sem forma de reabrir a janela; nesse caso, encerre o processo pelo terminal
+(`pkill linux-voice-typer-desktop`).
 
 ### Erros amigaveis na interface
 
@@ -566,6 +657,8 @@ A interface traduz erros tecnicos do core para mensagens compreensiveis:
 | audio error | Erro ao acessar o microfone. Verifique se ha um microfone disponivel. |
 | hotkey error | Erro ao registrar hotkey global. Verifique se ha outro programa usando a mesma combinacao. |
 | transcriber returned empty text | Whisper retornou texto vazio. Verifique o modelo e o audio gravado. |
+| dependency missing | Dependencia ausente: <nome>. Rode `cargo run -- doctor` para diagnostico. |
+| unsupported feature | Recurso nao disponivel: <detalhe>. |
 
 ## Troubleshooting
 
@@ -663,6 +756,10 @@ ydotool key 29:1 47:1 47:0 29:0
 - Tray icon no GNOME pode depender de suporte AppIndicator/KStatusNotifier.
 - Nao ha streaming em tempo real.
 - Nao ha escolha de microfone por CLI ainda.
+- `start_minimized` existe no config.toml e na UI, mas ainda nao e aplicado: a janela abre visivel.
+- O clipboard depende de `wl-clipboard`, entao o app e Wayland-first; em X11 puro a colagem nao funciona.
+- O fechamento da janela sempre esconde o app, mesmo sem tray icon disponivel.
+- Arquivos temporarios (`recording-*.wav`, `whisper-output-*.txt`) nao sao removidos automaticamente.
 
 ## Proximos passos
 
@@ -673,7 +770,7 @@ Nao implementados ou ainda experimentais nesta fase:
 - Escolha de modelo por seletor nativo de arquivos
 - Suporte a `libei` / portal
 - Suporte melhor a GNOME/KDE Wayland
-- Empacotamento `.deb` / `AppImage`
+- Validacao do empacotamento `.deb` / `AppImage` (`tauri.conf.json` ja define os targets, mas o build empacotado ainda nao foi validado)
 - Servico `systemd --user`
 
 ## Nota

@@ -1,6 +1,6 @@
 # Linux Voice Typer 🎙️⚡
 
-> **Ditado por voz 100% local, ultra-rápido e privado para Linux (Wayland & X11).**  
+> **Ditado por voz 100% local, ultra-rápido e privado para Linux (Wayland).**  
 > Fale no microfone, solte o atalho e o texto é transcrito pelo Whisper local e colado automaticamente na janela ativa — seja no seu editor de código, navegador, terminal ou chat.
 
 ---
@@ -8,7 +8,7 @@
 ## 🌟 Principais Recursos
 
 - 🧠 **Privacidade Total & Offline:** Todo o processamento de áudio é feito localmente na sua máquina utilizando Whisper.cpp. Sem envio de dados para servidores externos ou nuvem.
-- ⚡ **Auto-Paste Inteligente no Wayland & X11:** Backend nativo com teclado virtual de kernel (`uinput`) que resolve de ponta a ponta as limitações tradicionais de colagem no Wayland (compatível com GNOME, KDE, Hyprland, Sway, etc.).
+- ⚡ **Auto-Paste Inteligente no Wayland:** Backend nativo com teclado virtual de kernel (`uinput`) que resolve de ponta a ponta as limitações tradicionais de colagem no Wayland (compatível com GNOME, KDE, Hyprland, Sway, etc.).
 - 🎛️ **Interface Desktop Moderna em Abas:**
   - **Principal:** Controle de serviço em tempo real, alternador rápido de modo (Editor vs Terminal), visualizador de transcrição com cópia em 1 clique e cards de status.
   - **Configurações:** Painel completo para idioma, modelo Whisper, caminhos, inicialização automática e preferências de injeção.
@@ -19,11 +19,12 @@
   - **⚪ Cinza:** Serviço pausado ou motor parado.
 - 🌊 **Waveform Reativa Real:** Barra de ondas sonoras no HUD que reage dinamicamente ao volume e à intensidade real da sua voz (cálculo de amplitude RMS no backend Rust via `cpal`), sem loops falsos de CSS.
 - ⏱️ **Cronômetro em Tempo Real:** Timer ao vivo durante a gravação e durante a transcrição do Whisper, mostrando exatamente quanto tempo foi falado e o tempo de processamento.
+- 🔔 **Notificações OSD (interface desktop):** Avisos de desktop via `notify-send` para “Escutando...”, “Transcrevendo...” e “Ditado Colado!”, sincronizados com o estado do serviço. A CLI não envia notificações.
 - ⌨️ **Gravador Interativo de Teclas:** Configure qualquer atalho ou tecla única (como `F7`, `F8`, `F12`, teclas macro) ou combinações (`Control+Alt+Space`, `Alt+Space`) apenas clicando em *Gravar Tecla* e pressionando-a no teclado.
 - 🚀 **Autostart no Sistema & Inicialização Automática:**
   - Opção nativa para iniciar junto com o login da sessão Linux (`~/.config/autostart`).
   - Opção para o serviço de voz já inicializar ativo assim que o aplicativo for aberto.
-- 💻 **CLI Robusta:** Pode ser executado e configurado 100% via linha de comando ou em modo de terminal puro (`--terminal-hotkey`).
+- 💻 **CLI Robusta:** Pode ser executado 100% via linha de comando (configuração pelo `config.toml`) ou em modo de terminal puro (`--terminal-hotkey`).
 
 ---
 
@@ -45,7 +46,7 @@
 [Cópia do Texto para a Área de Transferência (Clipboard)]
            │
            ▼
-[Injeção Automática via uinput / ydotool]
+[Injeção Automática via wtype / ydotool / uinput]
    ├── Modo Editor:    Ctrl + V (VS Code, Chrome, WhatsApp, Obsidian)
    └── Modo Terminal:  Ctrl + Shift + V (Ghostty, Alacritty, GNOME Terminal)
 ```
@@ -63,12 +64,14 @@ sudo apt update
 sudo apt install build-essential cmake git pkg-config libasound2-dev libssl-dev libglib2.0-dev libgtk-3-dev libayatana-appindicator3-dev
 ```
 
-Para usar o backend de colagem recomendado (`uinput`), adicione seu usuário ao grupo `input`:
+Para usar a colagem via `uinput` (recomendada no GNOME/Wayland e usada como fallback do backend `auto`), adicione seu usuário ao grupo `input`:
 
 ```bash
 sudo usermod -aG input $USER
 # Observação: Reinicie a sessão (logout/login) para aplicar a permissão de grupo.
 ```
+
+> **Requisito de sessão:** o clipboard usa `wl-clipboard` (`wl-copy`/`wl-paste`), então o fluxo completo de colagem é Wayland-first. Em X11 puro, a gravação e a transcrição funcionam, mas a cópia/colagem automática falha.
 
 ### 2. Clonar e Configurar o Projeto
 
@@ -98,7 +101,7 @@ npm run tauri dev
 ### Principais Ações na Interface:
 - **Gravar Tecla de Atalho:** Acesse a aba **Configurações**, clique em **Gravar Tecla** e pressione a tecla desejada (ex: `F7`, `F8` ou `Control+Alt+Space`).
 - **Alternar Modo de Colagem:** Na aba **Principal**, selecione entre **Editor & Navegador** (`Ctrl+V`) ou **Terminal & Shell** (`Ctrl+Shift+V`).
-- **Iniciar com o Sistema:** Ative a caixa **Iniciar com o Sistema (Autostart)** para que o aplicativo inicie silenciosamente na bandeja a cada login.
+- **Iniciar com o Sistema:** Ative a caixa **Iniciar com o Sistema (Autostart)** para criar a entrada em `~/.config/autostart` e iniciar o aplicativo a cada login (a janela abre visível; a opção *Iniciar Minimizado* é salva no config, mas ainda não é aplicada).
 
 ---
 
@@ -128,23 +131,23 @@ cargo build --release
 
 ## ⚙️ Arquivo de Configuração (`config.toml`)
 
-O arquivo de configuração fica salvo no diretório raiz do projeto (ou no caminho configurado):
+O arquivo de configuração fica no diretório do projeto (descoberto a partir do diretório atual; veja o modelo comentado em `config.example.toml`):
 
 ```toml
 hotkey = "F7"
 language = "pt"
-model_path = "/home/pablo/.local/share/linux-voice-typer/whisper.cpp/models/ggml-small.bin"
-whisper_bin = "/home/pablo/.local/share/linux-voice-typer/whisper.cpp/build/bin/whisper-cli"
+model_path = "/home/USER/.local/share/linux-voice-typer/whisper.cpp/models/ggml-small.bin"
+whisper_bin = "/home/USER/.local/share/linux-voice-typer/whisper.cpp/build/bin/whisper-cli"
 insert_mode = "clipboard"
 restore_clipboard = false
 auto_paste = true
-paste_backend = "uinput"
-paste_shortcut = "ctrl_v"
+paste_backend = "auto"        # auto = wtype -> ydotool -> uinput -> clipboard
+paste_shortcut = "ctrl_v"     # ctrl_v (editor) | ctrl_shift_v (terminal)
 trim_text = true
-temp_dir = "/home/pablo/.local/share/linux-voice-typer/temp"
-auto_start_service = true
-start_minimized = false
-start_with_system = true
+temp_dir = "/home/USER/.local/share/linux-voice-typer/temp"
+auto_start_service = true     # inicia o servico ao abrir o app
+start_minimized = false       # reservado (ainda nao aplicado)
+start_with_system = true      # entrada em ~/.config/autostart
 ```
 
 ---
@@ -159,10 +162,12 @@ cargo run -- paste-test
 ```
 
 O diagnóstico verifica automaticamente:
-- Acesso e captura do microfone padrão via ALSA/PulseAudio/PipeWire;
-- Presença e permissão de escrita em `/dev/uinput`;
-- Existência e integridade do binário `whisper-cli` e do modelo de IA;
-- Dependências do Wayland / X11.
+- Sistema Linux e sessão Wayland;
+- Teste real de escrita/leitura do clipboard (`wl-copy`/`wl-paste`);
+- Backends de colagem (`wtype`, `ydotool`, `ydotoold`) e permissão de escrita em `/dev/uinput` (com criação real de um teclado virtual);
+- Existência do binário `whisper-cli`, do modelo de IA e escrita em `temp_dir`;
+- Captura do microfone padrão via `cpal` (ALSA/PulseAudio/PipeWire);
+- Inicialização do listener de hotkey global (`keytap`).
 
 Consulte o documento técnico detalhado para mais informações:
 📄 [**TECHNICAL.md**](TECHNICAL.md)

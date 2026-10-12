@@ -11,9 +11,10 @@ insert_mode = "clipboard"
 # - "uinput": usa /dev/uinput diretamente pelo app
 # - "none": copia para o clipboard e nao cola automaticamente
 #
+# Valor padrao gerado pelo setup: "auto".
 # Recomendacao: use "uinput" quando wtype falhar no Wayland e /dev/uinput estiver acessivel.
 # O mais importante e garantir que a transcricao fique no clipboard.
-paste_backend = "uinput"
+paste_backend = "auto"
 
 # paste_shortcut:
 # - "ctrl_v": recomendado para apps normais
@@ -30,3 +31,12 @@ restore_clipboard = false
 auto_paste = true
 trim_text = true
 temp_dir = "/home/USER/.local/share/linux-voice-typer/temp"
+
+# auto_start_service: inicia o servico de voz ao abrir a interface desktop.
+auto_start_service = true
+
+# start_minimized: reservado (ainda nao aplicado pelo app; a janela abre visivel).
+start_minimized = false
+
+# start_with_system: cria/remove entrada de autostart em ~/.config/autostart.
+start_with_system = false
