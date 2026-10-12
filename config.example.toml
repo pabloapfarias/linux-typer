@@ -50,3 +50,7 @@ close_to_tray = true
 # osd_enabled: exibe notificacoes de desktop (gravacao, transcricao, erros e
 # inicio/parada do servico). false desativa todo o OSD.
 osd_enabled = true
+
+# input_device: nome do microfone de entrada (veja a lista na aba
+# Configuracoes da interface). Se omitido, usa o padrao do sistema.
+# input_device = "Nome do microfone"

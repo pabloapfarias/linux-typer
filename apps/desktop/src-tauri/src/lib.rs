@@ -14,6 +14,7 @@ use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
+use tauri_plugin_dialog::DialogExt;
 
 struct DesktopState {
     paths: AppPaths,
@@ -43,6 +44,8 @@ struct DesktopConfig {
     close_to_tray: bool,
     #[serde(default = "default_true_flag")]
     osd_enabled: bool,
+    #[serde(default)]
+    input_device: Option<String>,
 }
 
 fn default_true_flag() -> bool {
@@ -169,13 +172,39 @@ fn open_config_file(state: State<'_, DesktopState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn select_model_file() -> Option<String> {
-    None
+async fn select_model_file(app: AppHandle) -> Option<String> {
+    app.dialog()
+        .file()
+        .set_title("Selecionar modelo Whisper (.bin)")
+        .add_filter("Whisper model", &["bin"])
+        .blocking_pick_file()
+        .and_then(|path| path.into_path().ok())
+        .map(|path| path.display().to_string())
 }
 
 #[tauri::command]
-fn select_whisper_bin() -> Option<String> {
-    None
+async fn select_whisper_bin(app: AppHandle) -> Option<String> {
+    app.dialog()
+        .file()
+        .set_title("Selecionar executável whisper-cli")
+        .blocking_pick_file()
+        .and_then(|path| path.into_path().ok())
+        .map(|path| path.display().to_string())
+}
+
+#[tauri::command]
+fn list_input_devices() -> Vec<String> {
+    linux_voice_typer::audio::list_input_devices()
+}
+
+#[tauri::command]
+fn get_history() -> Result<Vec<linux_voice_typer::history::HistoryEntry>, String> {
+    linux_voice_typer::history::load_recent(100).map_err(to_message)
+}
+
+#[tauri::command]
+fn clear_history() -> Result<(), String> {
+    linux_voice_typer::history::clear().map_err(to_message)
 }
 
 #[tauri::command]
@@ -220,6 +249,7 @@ pub fn run() {
     };
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(state)
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -295,7 +325,10 @@ pub fn run() {
             select_whisper_bin,
             get_recent_logs,
             set_mode_editor,
-            set_mode_terminal
+            set_mode_terminal,
+            list_input_devices,
+            get_history,
+            clear_history
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -487,6 +520,7 @@ fn config_to_desktop(config: Config) -> DesktopConfig {
         start_with_system: linux_voice_typer::autostart::is_autostart_enabled(),
         close_to_tray: config.close_to_tray,
         osd_enabled: config.osd_enabled,
+        input_device: config.input_device,
     }
 }
 
@@ -512,6 +546,7 @@ fn desktop_to_config(config: DesktopConfig) -> Config {
         start_with_system: config.start_with_system,
         close_to_tray: config.close_to_tray,
         osd_enabled: config.osd_enabled,
+        input_device: config.input_device,
     }
 }
 

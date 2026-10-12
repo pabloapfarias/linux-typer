@@ -27,6 +27,26 @@ pub enum Commands {
     Doctor,
     PasteTest,
     Run(RunArgs),
+    Service(ServiceArgs),
+}
+
+#[derive(Debug, Clone, clap::Args)]
+pub struct ServiceArgs {
+    #[command(subcommand)]
+    pub command: ServiceCommand,
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub enum ServiceCommand {
+    /// Instala a unit systemd --user e opcionalmente habilita/inicia
+    Install {
+        #[arg(long)]
+        no_enable: bool,
+    },
+    /// Para, desabilita e remove a unit systemd --user
+    Uninstall,
+    /// Mostra o status da unit systemd --user
+    Status,
 }
 
 #[derive(Debug, Clone, clap::Args)]

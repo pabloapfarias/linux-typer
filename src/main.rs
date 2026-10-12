@@ -37,6 +37,7 @@ fn run_main() -> AppResult<()> {
         Commands::Doctor => doctor::run_doctor(&paths),
         Commands::PasteTest => run_paste_test(&paths),
         Commands::Run(args) => run_command(&paths, args),
+        Commands::Service(args) => linux_voice_typer::systemd::run_service_command(&args),
     }
 }
 
@@ -128,7 +129,7 @@ fn run_voice_loop(config: &Config, force_terminal_hotkey: bool) -> AppResult<()>
                 }
 
                 info!("start recording");
-                match Recorder::start() {
+                match Recorder::start(config.input_device.as_deref()) {
                     Ok(active) => {
                         recorder = Some(active);
                     }

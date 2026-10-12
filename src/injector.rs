@@ -17,6 +17,8 @@ const PASTE_TEST_TEXT: &str = "teste do linux-voice-typer";
 pub struct PasteBackendStatus {
     pub wl_copy: Option<String>,
     pub wl_paste: Option<String>,
+    pub xclip: Option<String>,
+    pub xsel: Option<String>,
     pub wtype: Option<String>,
     pub ydotool: Option<String>,
     pub ydotoold: Option<String>,
@@ -82,6 +84,8 @@ pub fn paste_test_report(config: &Config) -> AppResult<String> {
 pub fn detect_paste_backend_status() -> PasteBackendStatus {
     let wl_copy = find_command("wl-copy");
     let wl_paste = find_command("wl-paste");
+    let xclip = find_command("xclip");
+    let xsel = find_command("xsel");
     let wtype = find_command("wtype");
     let ydotool = find_command("ydotool");
     let ydotoold = find_command("ydotoold");
@@ -102,6 +106,8 @@ pub fn detect_paste_backend_status() -> PasteBackendStatus {
     PasteBackendStatus {
         wl_copy,
         wl_paste,
+        xclip,
+        xsel,
         wtype,
         ydotool,
         ydotoold,

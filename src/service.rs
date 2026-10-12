@@ -251,7 +251,10 @@ impl VoiceTyperService {
             language: config.language,
             model_path: config.model_path.display().to_string(),
             whisper_bin: config.whisper_bin.display().to_string(),
-            microphone: default_microphone_name(),
+            microphone: config
+                .input_device
+                .clone()
+                .unwrap_or_else(default_microphone_name),
             last_transcript: inner
                 .as_ref()
                 .and_then(|inner| inner.last_transcript.clone()),
@@ -353,7 +356,7 @@ fn run_service_loop(
                     push_event(inner, "Gravação iniciada");
                 });
 
-                match Recorder::start() {
+                match Recorder::start(config.input_device.as_deref()) {
                     Ok(active) => {
                         recorder = Some(active);
                     }
@@ -672,6 +675,7 @@ fn fallback_config() -> Config {
         start_with_system: false,
         close_to_tray: true,
         osd_enabled: true,
+        input_device: None,
     }
 }
 

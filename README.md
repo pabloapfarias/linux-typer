@@ -11,7 +11,8 @@
 - ⚡ **Auto-Paste Inteligente no Wayland:** Backend nativo com teclado virtual de kernel (`uinput`) que resolve de ponta a ponta as limitações tradicionais de colagem no Wayland (compatível com GNOME, KDE, Hyprland, Sway, etc.).
 - 🎛️ **Interface Desktop Moderna em Abas:**
   - **Principal:** Controle de serviço em tempo real, alternador rápido de modo (Editor vs Terminal), visualizador de transcrição com cópia em 1 clique e cards de status.
-  - **Configurações:** Painel completo para idioma, modelo Whisper, caminhos, inicialização automática e preferências de injeção.
+  - **Configurações:** Painel completo para idioma, microfone de entrada, modelo Whisper, caminhos (com seletores nativos de arquivo), inicialização automática e preferências de injeção.
+  - **Histórico:** Últimas 100 transcrições salvas localmente (`history.jsonl`), com cópia em 1 clique e limpeza.
   - **Diagnóstico & Debug:** Diagnóstico completo do sistema (`doctor`), teste de colagem automática (`paste-test`), console de comandos e logs de eventos do daemon em tempo real.
 - 🟢🔴⚪ **System Tray Dinâmico (3 Estados Visuais):**
   - **🟢 Verde:** Serviço ativo e pronto para escutar o atalho.
@@ -71,7 +72,7 @@ sudo usermod -aG input $USER
 # Observação: Reinicie a sessão (logout/login) para aplicar a permissão de grupo.
 ```
 
-> **Requisito de sessão:** o clipboard usa `wl-clipboard` (`wl-copy`/`wl-paste`), então o fluxo completo de colagem é Wayland-first. Em X11 puro, a gravação e a transcrição funcionam, mas a cópia/colagem automática falha.
+> **Requisito de sessão:** o clipboard é detectado automaticamente — `wl-clipboard` no Wayland ou `xclip`/`xsel` no X11 (ex.: `sudo apt install xclip`). Sem nenhum deles a cópia/colagem falha; o `doctor` aponta o que instalar.
 
 ### 2. Clonar e Configurar o Projeto
 
@@ -101,6 +102,9 @@ npm run tauri dev
 ### Principais Ações na Interface:
 - **Gravar Tecla de Atalho:** Acesse a aba **Configurações**, clique em **Gravar Tecla** e pressione a tecla desejada (ex: `F7`, `F8` ou `Control+Alt+Space`).
 - **Alternar Modo de Colagem:** Na aba **Principal**, selecione entre **Editor & Navegador** (`Ctrl+V`) ou **Terminal & Shell** (`Ctrl+Shift+V`).
+- **Escolher Microfone:** Na aba **Configurações**, selecione o dispositivo em **Microfone de Entrada** (ou mantenha "Padrão do Sistema").
+- **Selecionar arquivos:** Use os botões **Selecionar…** ao lado dos campos de modelo/executável para abrir o seletor nativo de arquivos.
+- **Histórico:** Na aba **Histórico**, clique em uma entrada para copiar o texto ou use **Limpar histórico**.
 - **Iniciar com o Sistema:** Ative a caixa **Iniciar com o Sistema (Autostart)** para criar a entrada em `~/.config/autostart` e iniciar o aplicativo a cada login (com a opção *Iniciar Minimizado* ativa e tray disponível, a janela inicia oculta na bandeja).
 
 ---
@@ -140,6 +144,29 @@ O script `./execute` na raiz resume os comandos mais usados:
 ./execute build       # binário release
 ```
 
+### Serviço `systemd --user`
+
+Para manter o ditado rodando como serviço do usuário (sem terminal aberto):
+
+```bash
+# Instala a unit, habilita e inicia
+cargo run -- service install
+
+# Apenas instala (sem habilitar)
+cargo run -- service install --no-enable
+
+# Status / remoção
+cargo run -- service status
+cargo run -- service uninstall
+```
+
+Se o Wayland não for herdado pelo gerenciador de serviços:
+
+```bash
+systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_SESSION_TYPE
+systemctl --user restart linux-voice-typer
+```
+
 ---
 
 ## ⚙️ Arquivo de Configuração (`config.toml`)
@@ -163,6 +190,7 @@ start_minimized = false       # inicia oculto na bandeja (se houver tray)
 start_with_system = true      # entrada em ~/.config/autostart
 close_to_tray = true          # fechar a janela esconde para a bandeja (se houver tray)
 osd_enabled = true            # notificacoes de desktop (false desativa todo o OSD)
+# input_device = "Nome do microfone"  # padrao do sistema se omitido
 ```
 
 ---

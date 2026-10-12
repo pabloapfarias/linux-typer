@@ -11,6 +11,9 @@ pub enum AppError {
     #[error("toml serialize error: {0}")]
     TomlSer(#[from] toml::ser::Error),
 
+    #[error("json error: {0}")]
+    Json(#[from] serde_json::Error),
+
     #[error("audio error: {0}")]
     Audio(#[from] cpal::Error),
 

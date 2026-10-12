@@ -2,6 +2,8 @@
 name = "linux-voice-typer-desktop"
 version = "0.1.0"
 edition = "2024"
+description = "Ditado por voz local com Whisper e auto-paste para Linux (interface desktop)"
+authors = ["linux-voice-typer"]
 
 [lib]
 name = "linux_voice_typer_desktop_lib"
@@ -15,3 +17,4 @@ linux-voice-typer = { path = "../../.." }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-dialog = "2"

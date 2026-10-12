@@ -37,6 +37,10 @@ app.innerHTML = `
       <button class="tab-btn" data-tab="tab-settings">
         <span>Configurações</span>
       </button>
+      <button class="tab-btn" data-tab="tab-history">
+        <span>Histórico</span>
+        <span class="tab-badge" id="history-count">0</span>
+      </button>
       <button class="tab-btn" data-tab="tab-debug">
         <span>Diagnóstico & Debug</span>
         <span class="tab-badge" id="tab-log-count">0</span>
@@ -200,6 +204,14 @@ app.innerHTML = `
           </div>
 
           <div class="form-group">
+            <label for="cfg-input-device">Microfone de Entrada</label>
+            <select id="cfg-input-device">
+              <option value="">Padrão do Sistema</option>
+            </select>
+            <span class="field-hint">Dispositivo usado para gravar (a lista é carregada ao abrir o app).</span>
+          </div>
+
+          <div class="form-group">
             <label for="cfg-shortcut">Modo de Colagem Padrão</label>
             <select id="cfg-shortcut">
               <option value="ctrl_v">Editor / Comum (Ctrl+V)</option>
@@ -223,13 +235,19 @@ app.innerHTML = `
           <!-- Caminhos de Modelo e Executável -->
           <div class="form-group full-width">
             <label for="cfg-model">Caminho do Modelo Whisper (.bin)</label>
-            <input id="cfg-model" type="text" placeholder="/caminho/para/ggml-small.bin" />
+            <div class="input-with-button">
+              <input id="cfg-model" type="text" placeholder="/caminho/para/ggml-small.bin" />
+              <button type="button" id="browse-model" class="ghost">Selecionar…</button>
+            </div>
             <span class="field-hint">Arquivo do modelo de IA compilado para Whisper.cpp.</span>
           </div>
 
           <div class="form-group full-width">
             <label for="cfg-whisper">Executável Whisper CLI</label>
-            <input id="cfg-whisper" type="text" placeholder="/caminho/para/whisper-cli" />
+            <div class="input-with-button">
+              <input id="cfg-whisper" type="text" placeholder="/caminho/para/whisper-cli" />
+              <button type="button" id="browse-whisper" class="ghost">Selecionar…</button>
+            </div>
             <span class="field-hint">Binário compilado de inferência de áudio local.</span>
           </div>
 
@@ -366,6 +384,25 @@ app.innerHTML = `
         </article>
       </section>
     </div>
+
+    <!-- ============================================================== -->
+    <!-- TAB 4: HISTÓRICO DE TRANSCRIÇÕES                               -->
+    <!-- ============================================================== -->
+    <div id="tab-history" class="tab-content">
+      <section class="card">
+        <div class="card-title">
+          <span>Histórico de Transcrições</span>
+          <div class="actions-row">
+            <button id="refresh-history" class="ghost" style="padding: 6px 12px; font-size: 0.82rem;">↻ Atualizar</button>
+            <button id="clear-history" class="danger" style="padding: 6px 12px; font-size: 0.82rem;">Limpar histórico</button>
+          </div>
+        </div>
+        <span class="field-hint">As últimas 100 transcrições, armazenadas localmente em <code>history.jsonl</code>. Clique em uma entrada para copiar o texto.</span>
+        <ul id="history-list" class="events-list history-list" style="margin-top: 12px;">
+          <li>Carregando histórico...</li>
+        </ul>
+      </section>
+    </div>
   </section>
 
   <!-- Floating Toast Notification -->
@@ -436,6 +473,9 @@ function setupTabs() {
     try {
       localStorage.setItem('lvt_active_tab', targetId);
     } catch {}
+    if (targetId === 'tab-history') {
+      refreshHistory();
+    }
   };
 
   tabButtons.forEach((btn) => {
@@ -448,6 +488,37 @@ function setupTabs() {
   if (savedTab && $(savedTab)) {
     switchTab(savedTab);
   }
+}
+
+function setupHistoryActions() {
+  $('refresh-history')?.addEventListener('click', async () => {
+    await refreshHistory();
+    showToast('Histórico atualizado.');
+  });
+
+  $('clear-history')?.addEventListener('click', async () => {
+    await call('clear_history');
+    await refreshHistory();
+    showToast('Histórico limpo.');
+  });
+
+  $('browse-model')?.addEventListener('click', async () => {
+    const path = await call('select_model_file');
+    if (path) {
+      $('cfg-model').value = path;
+      highlightSaveButton();
+      showToast('Modelo selecionado. Salve as configurações para aplicar.');
+    }
+  });
+
+  $('browse-whisper')?.addEventListener('click', async () => {
+    const path = await call('select_whisper_bin');
+    if (path) {
+      $('cfg-whisper').value = path;
+      highlightSaveButton();
+      showToast('Executável selecionado. Salve as configurações para aplicar.');
+    }
+  });
 }
 
 // ----------------------------------------------------------------------------
@@ -871,6 +942,7 @@ function renderConfig(config) {
   $('cfg-start-system').checked = Boolean(config.start_with_system);
   $('cfg-close-to-tray').checked = config.close_to_tray !== false;
   $('cfg-osd-enabled').checked = config.osd_enabled !== false;
+  setInputDeviceValue(config.input_device || '');
 }
 
 function collectConfig() {
@@ -893,6 +965,7 @@ function collectConfig() {
     start_with_system: $('cfg-start-system').checked,
     close_to_tray: $('cfg-close-to-tray').checked,
     osd_enabled: $('cfg-osd-enabled').checked,
+    input_device: $('cfg-input-device').value || null,
   };
 }
 
@@ -924,6 +997,94 @@ function updateModeButtons(mode) {
   $('mode-terminal').classList.toggle('selected', !isEditor);
 }
 
+function highlightSaveButton() {
+  const saveBtn = $('save-config');
+  if (!saveBtn) return;
+  saveBtn.classList.add('highlight-pulse');
+  setTimeout(() => saveBtn.classList.remove('highlight-pulse'), 5000);
+}
+
+// ----------------------------------------------------------------------------
+// Microfone de entrada
+// ----------------------------------------------------------------------------
+function setInputDeviceValue(value) {
+  const select = $('cfg-input-device');
+  if (!select) return;
+
+  if (value && ![...select.options].some((option) => option.value === value)) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = `${value} (indisponível?)`;
+    select.appendChild(option);
+  }
+
+  select.value = value || '';
+}
+
+async function populateInputDevices() {
+  try {
+    const devices = await call('list_input_devices');
+    const select = $('cfg-input-device');
+    if (!select) return;
+
+    const current = select.value;
+    select.innerHTML = '<option value="">Padrão do Sistema</option>';
+    for (const name of devices) {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      select.appendChild(option);
+    }
+    select.value = current;
+  } catch {}
+}
+
+// ----------------------------------------------------------------------------
+// Histórico de transcrições
+// ----------------------------------------------------------------------------
+async function refreshHistory() {
+  try {
+    renderHistory(await call('get_history'));
+  } catch {}
+}
+
+function renderHistory(entries) {
+  const list = $('history-list');
+  const count = $('history-count');
+  if (count) count.textContent = String(entries.length || 0);
+  if (!list) return;
+
+  list.innerHTML = '';
+  if (!entries.length) {
+    const item = document.createElement('li');
+    item.textContent = 'Nenhuma transcrição no histórico ainda.';
+    list.appendChild(item);
+    return;
+  }
+
+  for (const entry of entries) {
+    const item = document.createElement('li');
+    item.className = 'history-item';
+    item.title = 'Clique para copiar';
+
+    const time = document.createElement('span');
+    time.className = 'history-time';
+    time.textContent = entry.timestamp;
+
+    const text = document.createElement('span');
+    text.className = 'history-text';
+    text.textContent = entry.text;
+
+    item.append(time, text);
+    item.addEventListener('click', () => {
+      navigator.clipboard.writeText(entry.text);
+      showToast('Transcrição copiada!');
+    });
+
+    list.appendChild(item);
+  }
+}
+
 // ----------------------------------------------------------------------------
 // API Interactions
 // ----------------------------------------------------------------------------
@@ -942,6 +1103,7 @@ async function refreshConfig() {
 async function boot() {
   setupTabs();
   setupHotkeyRecorder();
+  setupHistoryActions();
   try {
     await listen('dictation-state', (event) => {
       const payload = event.payload || {};
@@ -955,7 +1117,9 @@ async function boot() {
   } catch (err) {
     console.warn('Tauri event listener registration failed:', err);
   }
+  await populateInputDevices();
   await refreshConfig();
+  await refreshHistory();
   await refreshStatus();
   setInterval(refreshStatus, 1000);
 }

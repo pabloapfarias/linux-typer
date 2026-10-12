@@ -82,6 +82,8 @@ pub struct Config {
     pub close_to_tray: bool,
     #[serde(default = "default_true")]
     pub osd_enabled: bool,
+    #[serde(default)]
+    pub input_device: Option<String>,
 }
 
 impl Config {
@@ -129,6 +131,7 @@ impl Config {
             start_with_system: false,
             close_to_tray: true,
             osd_enabled: true,
+            input_device: None,
         }
     }
 
@@ -247,6 +250,7 @@ mod tests {
             start_with_system: false,
             close_to_tray: true,
             osd_enabled: true,
+            input_device: None,
         }
     }
 

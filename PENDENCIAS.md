@@ -28,7 +28,7 @@ prioridade. Base: análise do código em **2026-10-12** (commit `54c9734`).
 | P1 | Correções importantes | 0 |
 | P2 | Notificações (evolução) | 0 |
 | P3 | Qualidade e infraestrutura | 0 |
-| P4 | Backlog de features | 7 |
+| P4 | Backlog de features | 1 |
 
 ---
 
@@ -62,13 +62,10 @@ ver §Concluídos.
 
 ## P4 — Backlog de features
 
-1. Histórico de transcrições (persistência + aba na UI).
-2. Escolha de microfone (listar devices via `cpal`; campo `input_device` no config).
-3. Seletores nativos de arquivo para modelo e `whisper-cli` (`select_model_file()`/`select_whisper_bin()` hoje retornam `None`).
-4. Suporte X11 para clipboard (`xclip`/`xsel`), se houver demanda — hoje o app é Wayland-first por causa do `wl-clipboard`.
-5. Validar empacotamento `.deb` / `AppImage` (`tauri.conf.json` já define os targets, mas o build não foi testado).
-6. Serviço `systemd --user`.
-7. Suporte a `libei` / portal desktop (injeção mais portável que `uinput`/`ydotool`).
+### P4-7 · Suporte a libei / portal desktop
+- **Tipo:** feature de pesquisa · **Área:** injeção
+- **Situação:** não implementado nesta fase. Requer sessão persistente do portal XDG RemoteDesktop (com consentimento do usuário) + cliente EIS/LibEI (ex.: crate `reis`), com handshake, keymap e emulação de teclado; não é validável neste ambiente e a UX seria ruim se a sessão fosse criada a cada ditada (popup de consentimento por colagem).
+- **Desenho sugerido:** sessão única mantida pelo serviço, backend `paste_backend = "libei"` e fallback automático para uinput/ydotool quando o portal não estiver disponível.
 
 ---
 
@@ -100,3 +97,9 @@ ver §Concluídos.
 | 2026-10-12 | P3-8 — placeholders `bin/` e `models/` removidos | `665019b` |
 | 2026-10-12 | P3-9 — detecção de microfone com cache de 10s | `665019b` |
 | 2026-10-12 | P3-10 — botões Iniciar/Pausar com ações dedicadas | `665019b` |
+| 2026-10-12 | P4-1 — histórico de transcrições (aba na UI + `history.jsonl` local) | a registrar |
+| 2026-10-12 | P4-2 — escolha de microfone (`input_device` + lista via `cpal`) | a registrar |
+| 2026-10-12 | P4-3 — seletores nativos de arquivo (`tauri-plugin-dialog`) | a registrar |
+| 2026-10-12 | P4-4 — clipboard X11 via `xclip`/`xsel` com detecção automática | a registrar |
+| 2026-10-12 | P4-5 — empacotamento validado (`.deb` e AppImage gerados) | a registrar |
+| 2026-10-12 | P4-6 — serviço `systemd --user` (`service install/uninstall/status`) | a registrar |

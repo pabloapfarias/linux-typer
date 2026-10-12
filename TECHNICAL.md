@@ -75,6 +75,15 @@ cargo build --release
 `--editor-paste` e `--terminal-paste` sao mutuamente exclusivos e so
 sobrescrevem o atalho durante aquela execucao.
 
+Servico `systemd --user`:
+
+```bash
+cargo run -- service install             # instala a unit, habilita e inicia
+cargo run -- service install --no-enable # apenas instala a unit
+cargo run -- service status
+cargo run -- service uninstall
+```
+
 ## Uso diario
 
 O programa sempre transcreve para o clipboard primeiro. Depois ele envia um
@@ -251,8 +260,7 @@ restore_clipboard = false
 
 - Linux
 - Wayland
-- `wl-copy`
-- `wl-paste`
+- ferramenta de clipboard: `wl-copy`/`wl-paste` (Wayland) ou `xclip`/`xsel` (X11)
 - teste real de clipboard (escreve e le de volta)
 - `wtype`
 - `ydotool`
@@ -267,7 +275,7 @@ restore_clipboard = false
 - microfone padrao via `cpal`
 - inicializacao do `keytap`
 
-Os itens reportados como `ERROR` (Linux, `wl-copy`, `config.toml`,
+Os itens reportados como `ERROR` (Linux, ferramenta de clipboard, `config.toml`,
 `whisper-cli`, `model`, `temp_dir` gravavel e microfone) bloqueiam o comando
 `run`. Quando o ambiente esta incompleto e o terminal e interativo, o `run`
 oferece executar o `setup` na hora.
@@ -328,11 +336,20 @@ apps/desktop/src-tauri/target/debug/linux-voice-typer-desktop
 
 ```bash
 cd apps/desktop
-npm run tauri -- build
+npm run tauri -- build --bundles deb       # pacote .deb
+npm run tauri -- build --bundles appimage  # AppImage
 ```
 
-O empacotamento pode exigir ferramentas adicionais do sistema, dependendo do
-target (`deb`, `appimage`) e da distribuicao.
+Os artefatos ficam em:
+
+```text
+apps/desktop/src-tauri/target/release/bundle/deb/
+apps/desktop/src-tauri/target/release/bundle/appimage/
+```
+
+O `.deb` foi validado em Ubuntu (contem binario, icones, `.desktop` e
+dependencias `libwebkit2gtk-4.1-0`, `libgtk-3-0` e `libayatana-appindicator3-1`)
+e o AppImage foi gerado com sucesso (~86 MiB).
 
 ### Comandos Tauri expostos
 
@@ -350,13 +367,17 @@ run_paste_test()
 open_config_file()
 select_model_file()
 select_whisper_bin()
+list_input_devices()
+get_history()
+clear_history()
 get_recent_logs()
 set_mode_editor()
 set_mode_terminal()
 ```
 
-`select_model_file()` e `select_whisper_bin()` existem como pontos de extensao,
-mas a primeira versao ainda usa campos de texto para os caminhos.
+`select_model_file()` e `select_whisper_bin()` usam o seletor nativo de
+arquivos (`tauri-plugin-dialog`) e devolvem o caminho escolhido (ou `null` se o
+usuario cancelar). `list_input_devices()` lista os microfones via `cpal`.
 
 ### Servico interno
 
@@ -558,14 +579,16 @@ linux-voice-typer/
 │   ├── error.rs             (AppError)
 │   ├── audio.rs             (Recorder: cpal -> WAV 16 kHz mono)
 │   ├── hotkey.rs            (keytap global + modo terminal)
+│   ├── history.rs           (historico local em history.jsonl)
 │   ├── transcriber.rs       (executa whisper-cli)
-│   ├── clipboard.rs         (wl-copy / wl-paste)
+│   ├── clipboard.rs         (wl-clipboard ou xclip/xsel)
 │   ├── injector.rs          (auto: wtype -> ydotool -> uinput)
 │   ├── uinput.rs            (teclado virtual via /dev/uinput)
 │   ├── notify.rs            (notificacoes OSD via notify-send)
 │   ├── service.rs           (VoiceTyperService)
 │   ├── doctor.rs            (diagnostico)
 │   ├── setup.rs             (setup do whisper.cpp e modelo)
+│   ├── systemd.rs           (unit systemd --user)
 │   ├── downloader.rs        (execucao de comandos externos)
 │   └── autostart.rs         (entrada .desktop em ~/.config/autostart)
 └── apps/
@@ -772,20 +795,15 @@ ydotool key 29:1 47:1 47:0 29:0
 - Alguns terminais preferem `Ctrl+Shift+V`.
 - Tray icon no GNOME pode depender de suporte AppIndicator/KStatusNotifier.
 - Nao ha streaming em tempo real.
-- Nao ha escolha de microfone por CLI ainda.
-- O clipboard depende de `wl-clipboard`, entao o app e Wayland-first; em X11 puro a colagem nao funciona.
+- Injecao via libei/portal ainda nao implementada (apenas wtype/ydotool/uinput).
 
 ## Proximos passos
 
 Nao implementados ou ainda experimentais nesta fase:
 
-- Historico de transcricoes
-- Escolha de microfone
-- Escolha de modelo por seletor nativo de arquivos
-- Suporte a `libei` / portal
+- Suporte a `libei` / portal desktop (injecao via portal; hoje apenas wtype/ydotool/uinput)
 - Suporte melhor a GNOME/KDE Wayland
-- Validacao do empacotamento `.deb` / `AppImage` (`tauri.conf.json` ja define os targets, mas o build empacotado ainda nao foi validado)
-- Servico `systemd --user`
+- Historico com busca/filtro (o historico basico ja existe)
 
 ## Nota
 

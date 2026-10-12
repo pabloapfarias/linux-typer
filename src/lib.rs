@@ -7,12 +7,14 @@ pub mod doctor;
 pub mod downloader;
 pub mod error;
 pub mod fs_paths;
+pub mod history;
 pub mod hotkey;
 pub mod injector;
 pub mod notify;
 pub mod platform;
 pub mod service;
 pub mod setup;
+pub mod systemd;
 pub mod transcriber;
 pub mod uinput;
 
@@ -46,6 +48,11 @@ fn transcribe_and_inject(config: &Config, wav_path: &Path) -> AppResult<String> 
     }
 
     injector::inject_text(config, &transcript)?;
+
+    if let Err(err) = history::append(&transcript) {
+        warn!("failed to append transcription to history: {err}");
+    }
+
     Ok(transcript)
 }
 

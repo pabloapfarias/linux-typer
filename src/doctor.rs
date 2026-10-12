@@ -121,24 +121,41 @@ fn collect_report(paths: &AppPaths) -> AppResult<DoctorReport> {
         )));
     }
 
+    let has_clipboard_tool = paste_status.wl_copy.is_some()
+        || paste_status.xclip.is_some()
+        || paste_status.xsel.is_some();
+
     if let Some(path) = &paste_status.wl_copy {
         paste_checks.push(ok(format!("wl-copy found: {path}")));
     } else {
-        let message = "wl-copy not found".to_string();
-        paste_checks.push(err(message.clone()));
+        paste_checks.push(warn("wl-copy not found (Wayland clipboard)"));
         paste_checks.push(suggest("sudo apt install wl-clipboard"));
-        fatal_issues.push(message);
     }
 
     if let Some(path) = &paste_status.wl_paste {
         paste_checks.push(ok(format!("wl-paste found: {path}")));
     } else {
-        paste_checks.push(warn("wl-paste not found"));
-        paste_checks.push(suggest("sudo apt install wl-clipboard"));
+        paste_checks.push(warn("wl-paste not found (Wayland clipboard)"));
+    }
+
+    if let Some(path) = &paste_status.xclip {
+        paste_checks.push(ok(format!("xclip found: {path} (X11 fallback)")));
+    }
+
+    if let Some(path) = &paste_status.xsel {
+        paste_checks.push(ok(format!("xsel found: {path} (X11 fallback)")));
+    }
+
+    if !has_clipboard_tool {
+        let message = "no clipboard tool found (wl-clipboard, xclip or xsel)".to_string();
+        paste_checks.push(err(message.clone()));
+        paste_checks.push(suggest("sudo apt install wl-clipboard   # Wayland"));
+        paste_checks.push(suggest("sudo apt install xclip           # X11"));
+        fatal_issues.push(message);
     }
 
     // Teste real de clipboard: escrever e ler de volta
-    if paste_status.wl_copy.is_some() && paste_status.wl_paste.is_some() {
+    if has_clipboard_tool {
         match clipboard::read_clipboard() {
             Ok(previous) => {
                 match clipboard::write_and_verify_clipboard(CLIPBOARD_TEST_TEXT) {

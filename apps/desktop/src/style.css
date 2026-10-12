@@ -1110,3 +1110,38 @@ pre#command-output {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   Input with action button / History
+   ========================================================================== */
+.input-with-button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.input-with-button input {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-list li.history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.history-list li.history-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.history-time {
+  font-size: 0.72rem;
+  color: var(--text-dim, #8b8b8b);
+}
+
+.history-text {
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}

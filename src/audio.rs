@@ -28,12 +28,10 @@ pub struct Recorder {
 }
 
 impl Recorder {
-    pub fn start() -> AppResult<Self> {
+    pub fn start(input_device: Option<&str>) -> AppResult<Self> {
         let host = cpal::default_host();
-        let device = host.default_input_device().ok_or_else(|| {
-            AppError::Unsupported("no default microphone/input device available".into())
-        })?;
-        let device_name = "default-input-device".to_string();
+        let device = resolve_input_device(&host, input_device)?;
+        let device_name = device.to_string();
 
         let selected = select_input_config(&device)?;
         let sample_format = selected.sample_format();
@@ -114,6 +112,41 @@ impl Recorder {
         );
         Ok(wav_path)
     }
+}
+
+/// Lista os nomes dos dispositivos de entrada disponiveis.
+pub fn list_input_devices() -> Vec<String> {
+    let host = cpal::default_host();
+    let mut names = Vec::new();
+
+    if let Ok(devices) = host.input_devices() {
+        for device in devices {
+            names.push(device.to_string());
+        }
+    }
+
+    names.sort();
+    names.dedup();
+    names
+}
+
+fn resolve_input_device(host: &cpal::Host, input_device: Option<&str>) -> AppResult<cpal::Device> {
+    if let Some(name) = input_device.map(str::trim).filter(|name| !name.is_empty()) {
+        match host.input_devices() {
+            Ok(devices) => {
+                for device in devices {
+                    if device.to_string() == name {
+                        return Ok(device);
+                    }
+                }
+                warn!("configured input device not found: {name}; falling back to default");
+            }
+            Err(err) => warn!("failed to list input devices ({err}); using default"),
+        }
+    }
+
+    host.default_input_device()
+        .ok_or_else(|| AppError::Unsupported("no default microphone/input device available".into()))
 }
 
 fn select_input_config(device: &cpal::Device) -> AppResult<SupportedStreamConfig> {
