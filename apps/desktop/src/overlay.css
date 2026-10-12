@@ -44,25 +44,31 @@ body.overlay-body {
 
 .overlay.recording .ov-dot {
   background: #ef4444;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.9);
-  animation: ov-pulse 1.1s ease-in-out infinite;
+  animation: ov-glow-red 1.1s ease-in-out infinite;
 }
 
 .overlay.transcribing .ov-dot {
   background: #f59e0b;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.9);
-  animation: ov-pulse 1.6s ease-in-out infinite;
+  animation: ov-glow-amber 1.4s ease-in-out infinite;
 }
 
-@keyframes ov-pulse {
+@keyframes ov-glow-red {
   0%,
   100% {
-    opacity: 1;
-    transform: scale(1);
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.75);
   }
   50% {
-    opacity: 0.55;
-    transform: scale(0.82);
+    box-shadow: 0 0 14px rgba(239, 68, 68, 1);
+  }
+}
+
+@keyframes ov-glow-amber {
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(245, 158, 11, 0.75);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(245, 158, 11, 1);
   }
 }
 
@@ -88,11 +94,15 @@ body.overlay-body {
 }
 
 .ov-wave {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 3px;
   margin-left: auto;
   height: 24px;
+}
+
+.overlay.recording .ov-wave {
+  display: flex;
 }
 
 .ov-wave span {
