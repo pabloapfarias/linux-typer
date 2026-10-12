@@ -49,7 +49,8 @@ concluídos em 2026-10-12 — ver §Concluídos.
 ## P2 — Notificações (evolução)
 
 ### P2-5 · Revisar `-e` (transient) + `-t 0` por daemon
-- **Objetivo:** validar comportamento no GNOME e no KDE/Plasma; documentar as diferenças observadas e ajustar flags se necessário.
+- **Status parcial (GNOME):** validado com `notify-send 0.8.8` — `-e`/`-t 0` funcionam, mas o ID fixo **não** substituía a notificação anterior; corrigido em `src/notify.rs` (guarda o ID do daemon via `-p` e usa `-r <id>`).
+- **Falta:** validar no KDE/Plasma e documentar diferenças, se houver.
 
 ---
 

@@ -500,8 +500,8 @@ pelo console e pela CLI.
 ### Notificações OSD
 
 Quando o serviço (interface desktop) muda de estado, o core dispara uma
-notificação de desktop via `notify-send` com ID fixo (`-r 4242`), substituindo
-a notificação anterior:
+notificação de desktop via `notify-send`. O ID atribuído pelo daemon é guardado
+(`-p`) e o aviso seguinte usa `-r <id>`, substituindo o anterior:
 
 | Estado | Icone | Expira | Texto |
 |---|---|---|---|
