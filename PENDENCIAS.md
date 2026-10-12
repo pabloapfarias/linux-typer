@@ -127,7 +127,7 @@ concluídos em 2026-10-12 — ver §Concluídos.
 | 2026-10-12 | P0-2 — fechar janela sem tray (`close_to_tray` + detecção de host StatusNotifier) | `cb68d7d` |
 | 2026-10-12 | P0-3 — aviso de hotkey global indisponível (evento + OSD) | `cb68d7d` |
 | 2026-10-12 | P1-4 — memory leak do preview no OSD de conclusão (corrigido junto com P0-1) | `cb68d7d` |
-| 2026-10-12 | P1-1 — corrida de estado entre transcrição e nova gravação (sessão/geração) | a registrar |
-| 2026-10-12 | P1-3 — limpeza de WAV/TXT temporários após cada ditada | a registrar |
-| 2026-10-12 | P2-1 — OSD de erro com mensagem amigável | a registrar |
-| 2026-10-12 | P2-2 — OSD de ciclo de vida + campo `osd_enabled` (parte do P2-3) | a registrar |
+| 2026-10-12 | P1-1 — corrida de estado entre transcrição e nova gravação (sessão/geração) | `7683a43` |
+| 2026-10-12 | P1-3 — limpeza de WAV/TXT temporários após cada ditada | `7683a43` |
+| 2026-10-12 | P2-1 — OSD de erro com mensagem amigável | `7683a43` |
+| 2026-10-12 | P2-2 — OSD de ciclo de vida + campo `osd_enabled` (parte do P2-3) | `7683a43` |
