@@ -132,8 +132,17 @@ fn spawn_terminal_listener(
 
             while !stop_flag.load(Ordering::Relaxed) {
                 line.clear();
-                if stdin.read_line(&mut line).is_err() {
-                    continue;
+                match stdin.read_line(&mut line) {
+                    Ok(0) => {
+                        // EOF on stdin (e.g. GUI mode or piped stdin closed)
+                        thread::sleep(Duration::from_millis(500));
+                        continue;
+                    }
+                    Err(_) => {
+                        thread::sleep(Duration::from_millis(500));
+                        continue;
+                    }
+                    Ok(_) => {}
                 }
 
                 let event = if recording {

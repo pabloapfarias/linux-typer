@@ -531,3 +531,22 @@ fn fallback_config() -> Config {
         start_with_system: false,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_service_restart() {
+        let config = fallback_config();
+        let service = VoiceTyperService::new(config);
+        assert!(service.start().is_ok());
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        assert!(service.is_running());
+        assert!(service.restart().is_ok());
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        assert!(service.is_running());
+        assert!(service.stop().is_ok());
+        assert!(!service.is_running());
+    }
+}

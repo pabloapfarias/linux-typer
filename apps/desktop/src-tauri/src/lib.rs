@@ -53,7 +53,7 @@ fn get_status(state: State<'_, DesktopState>) -> VoiceTyperStatus {
 }
 
 #[tauri::command]
-fn start_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<VoiceTyperStatus, String> {
+async fn start_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<VoiceTyperStatus, String> {
     if state.service.is_running() {
         return Ok(state.service.status());
     }
@@ -65,14 +65,14 @@ fn start_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<Voice
 }
 
 #[tauri::command]
-fn stop_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<VoiceTyperStatus, String> {
+async fn stop_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<VoiceTyperStatus, String> {
     state.service.stop().map_err(to_message)?;
     update_tray_icon(&app, "stopped");
     Ok(state.service.status())
 }
 
 #[tauri::command]
-fn restart_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<VoiceTyperStatus, String> {
+async fn restart_service(state: State<'_, DesktopState>, app: AppHandle) -> Result<VoiceTyperStatus, String> {
     let config = load_validated_config(&state.paths).map_err(to_message)?;
     state.service.reload_config(config).map_err(to_message)?;
     state.service.restart().map_err(to_message)?;
@@ -87,7 +87,7 @@ fn get_config(state: State<'_, DesktopState>) -> Result<DesktopConfig, String> {
 }
 
 #[tauri::command]
-fn save_config(
+async fn save_config(
     state: State<'_, DesktopState>,
     app: AppHandle,
     config: DesktopConfig,
@@ -165,7 +165,7 @@ fn get_recent_logs(state: State<'_, DesktopState>) -> Vec<String> {
 }
 
 #[tauri::command]
-fn set_mode_editor(state: State<'_, DesktopState>) -> Result<VoiceTyperStatus, String> {
+async fn set_mode_editor(state: State<'_, DesktopState>) -> Result<VoiceTyperStatus, String> {
     let mut config = load_config_or_default(&state.paths).map_err(to_message)?;
     config.paste_shortcut = PasteShortcut::CtrlV;
     config.save(state.paths.config_path()).map_err(to_message)?;
@@ -178,7 +178,7 @@ fn set_mode_editor(state: State<'_, DesktopState>) -> Result<VoiceTyperStatus, S
 }
 
 #[tauri::command]
-fn set_mode_terminal(state: State<'_, DesktopState>) -> Result<VoiceTyperStatus, String> {
+async fn set_mode_terminal(state: State<'_, DesktopState>) -> Result<VoiceTyperStatus, String> {
     let mut config = load_config_or_default(&state.paths).map_err(to_message)?;
     config.paste_shortcut = PasteShortcut::CtrlShiftV;
     config.save(state.paths.config_path()).map_err(to_message)?;
@@ -265,16 +265,32 @@ pub fn run() {
 }
 
 fn update_tray_icon(app: &AppHandle, state: &str) {
-    if let Some(tray) = app.tray_by_id("main-tray") {
-        let bytes: &[u8] = match state {
-            "recording" => include_bytes!("../icons/icon_red.png"),
-            "stopped" => include_bytes!("../icons/icon_gray.png"),
-            _ => include_bytes!("../icons/icon_green.png"),
+    static CURRENT_STATE: Mutex<Option<String>> = Mutex::new(None);
+    {
+        let mut curr = match CURRENT_STATE.lock() {
+            Ok(c) => c,
+            Err(_) => return,
         };
-        if let Ok(icon) = Image::from_bytes(bytes) {
-            let _ = tray.set_icon(Some(icon));
+        if curr.as_deref() == Some(state) {
+            return;
         }
+        *curr = Some(state.to_string());
     }
+
+    let app = app.clone();
+    let state_string = state.to_string();
+    std::thread::spawn(move || {
+        if let Some(tray) = app.tray_by_id("main-tray") {
+            let bytes: &[u8] = match state_string.as_str() {
+                "recording" => include_bytes!("../icons/icon_red.png"),
+                "stopped" => include_bytes!("../icons/icon_gray.png"),
+                _ => include_bytes!("../icons/icon_green.png"),
+            };
+            if let Ok(icon) = Image::from_bytes(bytes) {
+                let _ = tray.set_icon(Some(icon));
+            }
+        }
+    });
 }
 
 fn install_tray(app: &AppHandle) -> tauri::Result<()> {
@@ -301,16 +317,25 @@ fn install_tray(app: &AppHandle) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id().as_ref() {
             "start" => {
                 let state = app.state::<DesktopState>();
-                if let Ok(config) = load_validated_config(&state.paths) {
-                    let _ = state.service.reload_config(config);
-                    let _ = state.service.start();
-                    update_tray_icon(app, "idle");
-                }
+                let paths = state.paths.clone();
+                let service = state.service.clone();
+                let app_h = app.clone();
+                std::thread::spawn(move || {
+                    if let Ok(config) = load_validated_config(&paths) {
+                        let _ = service.reload_config(config);
+                        let _ = service.start();
+                        update_tray_icon(&app_h, "idle");
+                    }
+                });
             }
             "stop" => {
                 let state = app.state::<DesktopState>();
-                let _ = state.service.stop();
-                update_tray_icon(app, "stopped");
+                let service = state.service.clone();
+                let app_h = app.clone();
+                std::thread::spawn(move || {
+                    let _ = service.stop();
+                    update_tray_icon(&app_h, "stopped");
+                });
             }
             "editor" => {
                 let state = app.state::<DesktopState>();
