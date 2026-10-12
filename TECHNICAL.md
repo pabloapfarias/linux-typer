@@ -520,6 +520,7 @@ Detalhes e limitações atuais:
 - o OSD de ciclo de vida é suprimido em reinícios internos (ex.: salvar configurações).
 - sem o binário `notify-send`, o OSD fica desativado (aviso único no log).
 - os nomes de ícone seguem o freedesktop icon naming spec e dependem do tema instalado.
+- comportamento validado no GNOME (`notify-send 0.8.8`); outros daemons/desktops podem variar.
 - o estado `Idle` sem transcrição (falha na transcrição, erro ao gravar, parada
   do serviço) envia uma notificação curta de limpeza, evitando que um OSD de
   "Escutando..." ou "Transcrevendo..." com `-t 0` fique preso na tela.
@@ -544,6 +545,7 @@ linux-voice-typer/
 ├── Cargo.toml
 ├── config.example.toml
 ├── config.toml              (gerado pelo setup; ignorado pelo git)
+├── execute                  (atalho local: desktop, cli, doctor, setup, build)
 ├── README.md
 ├── TECHNICAL.md
 ├── src/

@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+#
+# Linux Voice Typer - Runner Script
+#
+
+set -e
+
+# Resolve absolute path to the project root even if called via symlink
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+PROJECT_ROOT="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+
+show_help() {
+  cat << EOF
+Linux Voice Typer - Executor 🎙️⚡
+
+Uso:
+  execute [comando] [opções]
+  ./execute [comando] [opções]
+
+Comandos disponíveis:
+  desktop        Inicia a interface Desktop completa (Tauri + Vite) [Padrão]
+  cli            Inicia o daemon de digitação por voz no terminal
+  interactive    Inicia em modo terminal interativo (Enter para falar / parar)
+  doctor         Executa o diagnóstico completo do sistema e dependências
+  setup          Baixa e compila o Whisper.cpp e modelo padrão
+  build          Compila o binário otimizado de produção (--release)
+  help           Exibe esta mensagem de ajuda
+
+Exemplos:
+  execute                    # Inicia a interface gráfica
+  execute cli                # Inicia o serviço pelo terminal
+  execute cli --editor-paste # Força colagem no modo editor (Ctrl+V)
+  execute doctor             # Valida microfone, permissões e dependências
+EOF
+}
+
+COMMAND="${1:-desktop}"
+
+case "$COMMAND" in
+  desktop|gui)
+    echo "🚀 Iniciando Linux Voice Typer (Interface Desktop)..."
+    cd "$PROJECT_ROOT/apps/desktop"
+    exec npm run tauri dev
+    ;;
+  cli|run)
+    shift || true
+    echo "🎙️ Iniciando Linux Voice Typer em modo Terminal/CLI..."
+    cd "$PROJECT_ROOT"
+    exec cargo run -- run "$@"
+    ;;
+  interactive|terminal)
+    shift || true
+    echo "🎙️ Iniciando modo terminal interativo (Enter para falar/parar)..."
+    cd "$PROJECT_ROOT"
+    exec cargo run -- run --terminal-hotkey "$@"
+    ;;
+  doctor)
+    cd "$PROJECT_ROOT"
+    exec cargo run -- doctor
+    ;;
+  setup)
+    cd "$PROJECT_ROOT"
+    exec cargo run -- setup
+    ;;
+  build)
+    echo "🔨 Compilando Linux Voice Typer em modo release..."
+    cd "$PROJECT_ROOT"
+    cargo build --release
+    echo "✓ Concluído: $PROJECT_ROOT/target/release/linux-voice-typer"
+    ;;
+  help|-h|--help)
+    show_help
+    exit 0
+    ;;
+  *)
+    if [[ "$COMMAND" == --* ]]; then
+      cd "$PROJECT_ROOT"
+      exec cargo run -- run "$@"
+    else
+      echo "Comando desconhecido: $COMMAND"
+      echo ""
+      show_help
+      exit 1
+    fi
+    ;;
+esac

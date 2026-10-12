@@ -127,6 +127,19 @@ cargo build --release
 ./target/release/linux-voice-typer run
 ```
 
+### Atalho com o script `execute`
+
+O script `./execute` na raiz resume os comandos mais usados:
+
+```bash
+./execute             # interface desktop (Tauri + Vite)
+./execute cli         # serviço CLI (modo editor padrão)
+./execute interactive # modo terminal interativo (Enter para falar/parar)
+./execute doctor      # diagnóstico do sistema
+./execute setup       # baixa e compila whisper.cpp + modelo
+./execute build       # binário release
+```
+
 ---
 
 ## ⚙️ Arquivo de Configuração (`config.toml`)
