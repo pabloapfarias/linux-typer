@@ -1,72 +1,93 @@
-# linux-voice-typer
+# Linux Voice Typer 🎙️⚡
 
-Ditado por voz local para Linux. Fale, solte o atalho e o texto aparece no
-editor, navegador, terminal ou input ativo.
+> **Ditado por voz 100% local, ultra-rápido e privado para Linux (Wayland & X11).**  
+> Fale no microfone, solte o atalho e o texto é transcrito pelo Whisper local e colado automaticamente na janela ativa — seja no seu editor de código, navegador, terminal ou chat.
 
-O `linux-voice-typer` usa Whisper localmente, copia a transcricao para o
-clipboard e envia o comando de colagem correto para a janela ativa. A proposta
-e simples: transformar fala em texto sem depender de uma interface grafica
-pesada e sem mandar audio para servicos externos.
+---
 
-## Por que existe
+## 🌟 Principais Recursos
 
-Digitar muito em chats, editores, terminais e ferramentas de desenvolvimento
-quebra o fluxo de trabalho. Ditado por voz ajuda, mas no Linux o auto-paste em
-Wayland costuma falhar por diferencas entre compositores.
+- 🧠 **Privacidade Total & Offline:** Todo o processamento de áudio é feito localmente na sua máquina utilizando Whisper.cpp. Sem envio de dados para servidores externos ou nuvem.
+- ⚡ **Auto-Paste Inteligente no Wayland & X11:** Backend nativo com teclado virtual de kernel (`uinput`) que resolve de ponta a ponta as limitações tradicionais de colagem no Wayland (compatível com GNOME, KDE, Hyprland, Sway, etc.).
+- 🎛️ **Interface Desktop Moderna em Abas:**
+  - **Principal:** Controle de serviço em tempo real, alternador rápido de modo (Editor vs Terminal), visualizador de transcrição com cópia em 1 clique e cards de status.
+  - **Configurações:** Painel completo para idioma, modelo Whisper, caminhos, inicialização automática e preferências de injeção.
+  - **Diagnóstico & Debug:** Diagnóstico completo do sistema (`doctor`), teste de colagem automática (`paste-test`), console de comandos e logs de eventos do daemon em tempo real.
+- 🟢🔴⚪ **System Tray Dinâmico (3 Estados Visuais):**
+  - **🟢 Verde:** Serviço ativo e pronto para escutar o atalho.
+  - **🔴 Vermelho:** Microfone gravando / escutando sua fala ativamente.
+  - **⚪ Cinza:** Serviço pausado ou motor parado.
+- 🌊 **Waveform Reativa Real:** Barra de ondas sonoras no HUD que reage dinamicamente ao volume e à intensidade real da sua voz (cálculo de amplitude RMS no backend Rust via `cpal`), sem loops falsos de CSS.
+- ⏱️ **Cronômetro em Tempo Real:** Timer ao vivo durante a gravação e durante a transcrição do Whisper, mostrando exatamente quanto tempo foi falado e o tempo de processamento.
+- ⌨️ **Gravador Interativo de Teclas:** Configure qualquer atalho ou tecla única (como `F7`, `F8`, `F12`, teclas macro) ou combinações (`Control+Alt+Space`, `Alt+Space`) apenas clicando em *Gravar Tecla* e pressionando-a no teclado.
+- 🚀 **Autostart no Sistema & Inicialização Automática:**
+  - Opção nativa para iniciar junto com o login da sessão Linux (`~/.config/autostart`).
+  - Opção para o serviço de voz já inicializar ativo assim que o aplicativo for aberto.
+- 💻 **CLI Robusta:** Pode ser executado e configurado 100% via linha de comando ou em modo de terminal puro (`--terminal-hotkey`).
 
-Este projeto resolve esse caminho de ponta a ponta:
+---
 
-- grava o microfone enquanto o atalho esta ativo
-- transcreve localmente com Whisper
-- copia o resultado para o clipboard
-- cola automaticamente no alvo certo
-- suporta editor comum e terminal Linux
+## 🏗️ Como Funciona
 
-## Principais recursos
+```text
+[Atalho Pressionado (ex: F7 ou Ctrl+Alt+Space)]
+           │
+           ▼
+[Gravação de Áudio via cpal (RMS em tempo real no HUD)]
+           │
+           ▼
+[Atalho Solto / Concluído]
+           │
+           ▼
+[Transcrição de Alta Precisão via Whisper local (.bin)]
+           │
+           ▼
+[Cópia do Texto para a Área de Transferência (Clipboard)]
+           │
+           ▼
+[Injeção Automática via uinput / ydotool]
+   ├── Modo Editor:    Ctrl + V (VS Code, Chrome, WhatsApp, Obsidian)
+   └── Modo Terminal:  Ctrl + Shift + V (Ghostty, Alacritty, GNOME Terminal)
+```
 
-- **Transcricao local:** audio processado na maquina com Whisper.
-- **Sem interface pesada:** CLI simples, focado em velocidade e confiabilidade.
-- **Auto-paste no Wayland:** backend `uinput` para contornar limitacoes do `wtype`.
-- **Modo editor:** envia `Ctrl+V` para inputs comuns.
-- **Modo terminal:** envia `Ctrl+Shift+V` para terminais, incluindo Codex CLI.
-- **Interface desktop experimental:** janela visual com status, configuracoes e tray icon.
-- **Fallback seguro:** mesmo se o auto-paste falhar, o texto permanece no clipboard.
+---
 
-## Uso rapido
+## 🚀 Instalação Rápida
 
-Instale e valide o ambiente:
+### 1. Pré-requisitos (Ubuntu / Debian)
+
+Certifique-se de ter os pacotes essenciais instalados:
 
 ```bash
+sudo apt update
+sudo apt install build-essential cmake git pkg-config libasound2-dev libssl-dev libglib2.0-dev libgtk-3-dev libayatana-appindicator3-dev
+```
+
+Para usar o backend de colagem recomendado (`uinput`), adicione seu usuário ao grupo `input`:
+
+```bash
+sudo usermod -aG input $USER
+# Observação: Reinicie a sessão (logout/login) para aplicar a permissão de grupo.
+```
+
+### 2. Clonar e Configurar o Projeto
+
+```bash
+git clone https://github.com/pabloapfarias/linux-typer.git
+cd linux-typer
+
+# Baixa e compila o Whisper.cpp e o modelo padrão (ggml-small.bin)
 cargo run -- setup
+
+# Valida o ambiente, microfone e permissões
 cargo run -- doctor
 ```
 
-Use em editores, navegadores e inputs comuns:
+---
 
-```bash
-cargo run -- run --editor-paste
-```
+## 🖥️ Executando a Interface Desktop
 
-Use em terminais Linux:
-
-```bash
-cargo run -- run --terminal-paste
-```
-
-Use o modo de hotkey pelo proprio terminal:
-
-```bash
-cargo run -- run --terminal-hotkey --terminal-paste
-```
-
-Nesse modo, pressione `Enter` para iniciar a gravacao e `Enter` novamente para
-parar, transcrever e colar.
-
-## Interface desktop
-
-Além da CLI, o projeto possui uma interface desktop experimental com tray icon
-para iniciar/parar o serviço, escolher modo Editor/Terminal e acessar
-diagnósticos.
+A interface gráfica foi construída com **Tauri v2** + **Vite**, oferecendo consumo mínimo de memória e integração nativa com o System Tray do Linux:
 
 ```bash
 cd apps/desktop
@@ -74,60 +95,80 @@ npm install
 npm run tauri dev
 ```
 
-No GNOME, o tray icon pode depender de suporte AppIndicator/KStatusNotifier.
-Veja detalhes em [TECHNICAL.md](TECHNICAL.md).
+### Principais Ações na Interface:
+- **Gravar Tecla de Atalho:** Acesse a aba **Configurações**, clique em **Gravar Tecla** e pressione a tecla desejada (ex: `F7`, `F8` ou `Control+Alt+Space`).
+- **Alternar Modo de Colagem:** Na aba **Principal**, selecione entre **Editor & Navegador** (`Ctrl+V`) ou **Terminal & Shell** (`Ctrl+Shift+V`).
+- **Iniciar com o Sistema:** Ative a caixa **Iniciar com o Sistema (Autostart)** para que o aplicativo inicie silenciosamente na bandeja a cada login.
 
-Para detalhes técnicos, veja [TECHNICAL.md](TECHNICAL.md).
+---
 
-## Como funciona
+## ⌨️ Executando via Linha de Comando (CLI)
 
-```text
-atalho pressionado
-  -> grava audio do microfone
-  -> salva WAV temporario
-  -> transcreve com Whisper local
-  -> copia texto para o clipboard
-  -> envia Ctrl+V ou Ctrl+Shift+V
+Se preferir utilizar em segundo plano ou em ambientes sem interface web:
+
+```bash
+# Modo Editor padrão (Ctrl+V)
+cargo run -- run --editor-paste
+
+# Modo Terminal (Ctrl+Shift+V)
+cargo run -- run --terminal-paste
+
+# Modo Terminal Interativo (Pressione Enter para falar, Enter para parar)
+cargo run -- run --terminal-hotkey --terminal-paste
 ```
 
-No Wayland, o projeto usa um backend de colagem compatível com uso diário em
-editores e terminais. Os detalhes ficam em [TECHNICAL.md](TECHNICAL.md).
+Para gerar o binário de produção otimizado:
 
-## Para quem e
+```bash
+cargo build --release
+./target/release/linux-voice-typer run
+```
 
-- desenvolvedores que usam terminal e editores o dia todo
-- usuarios Linux que querem ditado local sem solucao cloud
-- quem trabalha com Codex CLI, chats, IDEs, notas e formularios
-- quem precisa alternar entre editor comum e terminal sem perder o texto
+---
 
-## Documentacao tecnica
+## ⚙️ Arquivo de Configuração (`config.toml`)
 
-Detalhes de instalacao, configuracao, diagnostico, backends de paste e
-troubleshooting ficam no documento tecnico:
+O arquivo de configuração fica salvo no diretório raiz do projeto (ou no caminho configurado):
 
-[`TECHNICAL.md`](TECHNICAL.md)
+```toml
+hotkey = "F7"
+language = "pt"
+model_path = "/home/pablo/.local/share/linux-voice-typer/whisper.cpp/models/ggml-small.bin"
+whisper_bin = "/home/pablo/.local/share/linux-voice-typer/whisper.cpp/build/bin/whisper-cli"
+insert_mode = "clipboard"
+restore_clipboard = false
+auto_paste = true
+paste_backend = "uinput"
+paste_shortcut = "ctrl_v"
+trim_text = true
+temp_dir = "/home/pablo/.local/share/linux-voice-typer/temp"
+auto_start_service = true
+start_minimized = false
+start_with_system = true
+```
 
-## Status
+---
 
-Este projeto ainda e um MVP, mas ja valida o fluxo principal:
+## 🩺 Diagnóstico e Resolução de Problemas
 
-- gravacao local
-- transcricao local
-- clipboard
-- auto-paste em editor
-- auto-paste em terminal
-- fallback para Wayland via `uinput`
-- interface desktop experimental com tray icon
+Se encontrar problemas de microfone ou simulação de teclas, execute o assistente de diagnóstico:
 
-## Proximos passos
+```bash
+cargo run -- doctor
+cargo run -- paste-test
+```
 
-- historico de transcricoes
-- selecao de microfone
-- selecao de modelo Whisper
-- melhorias de empacotamento desktop
-- empacotamento `.deb` ou `AppImage`
-- servico `systemd --user`
+O diagnóstico verifica automaticamente:
+- Acesso e captura do microfone padrão via ALSA/PulseAudio/PipeWire;
+- Presença e permissão de escrita em `/dev/uinput`;
+- Existência e integridade do binário `whisper-cli` e do modelo de IA;
+- Dependências do Wayland / X11.
 
-## Licenca
+Consulte o documento técnico detalhado para mais informações:
+📄 [**TECHNICAL.md**](TECHNICAL.md)
 
-[MIT](LICENSE)
+---
+
+## 📄 Licença
+
+Distribuído sob a licença [MIT](LICENSE).
